@@ -97,19 +97,34 @@ export default function GlassCard({
     );
   }
 
+  // Android BlurView paints a dark rectangle inside the rounded border.
+  // A flat wash keeps the card one tone, matching the iOS glass.
+  if (Platform.OS === "android") {
+    return (
+      <View style={[styles.wrapper, glowStyle, style]} pointerEvents="box-none">
+        <View
+          pointerEvents="box-none"
+          style={[styles.inner, { borderColor: borderCol, backgroundColor: surfCol }]}
+        >
+          <View style={[styles.bgOverlay, { backgroundColor: overCol }]} pointerEvents="none" />
+          {children}
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.wrapper, glowStyle, style]} pointerEvents="box-none">
       <BlurView
         intensity={intensity}
         tint={tint}
-        blurMethod="dimezisBlurView"
         pointerEvents="box-none"
         style={[
           styles.inner,
           {
             borderColor: borderCol,
             // Fill on UIVisualEffectView kills iOS frost; keep the wash in the overlay.
-            backgroundColor: Platform.OS === "ios" ? "transparent" : surfCol,
+            backgroundColor: "transparent",
           },
         ]}
       >

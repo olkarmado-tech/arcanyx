@@ -219,22 +219,24 @@ export default function DreamBookScreen() {
       <CosmicBackground variant="dream" />
       <SafeAreaView style={styles.segmentSafe} edges={["top"]}>
         <View style={styles.segmentPill}>
+          <View pointerEvents="none" style={styles.segmentBg} />
           <Pressable
             onPress={() => selectTab("interpret")}
             style={({ pressed }) => [
               styles.segOption,
-              active === "interpret" && styles.segOptionActive,
               pressed && { opacity: 0.92 },
             ]}
             testID="dreambook-tab-interpret"
           >
             {active === "interpret" ? (
-              <LinearGradient
-                colors={["rgba(239,160,192,0.45)", "rgba(157,124,230,0.28)"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFill}
-              />
+              <View pointerEvents="none" style={styles.segFill}>
+                <LinearGradient
+                  colors={["rgba(239,160,192,0.45)", "rgba(157,124,230,0.28)"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              </View>
             ) : null}
             <BookOpen
               color={active === "interpret" ? theme.colors.text : theme.colors.textDim}
@@ -242,6 +244,7 @@ export default function DreamBookScreen() {
               strokeWidth={active === "interpret" ? 2 : 1.6}
             />
             <Text
+              numberOfLines={1}
               style={[styles.segText, active === "interpret" && styles.segTextActive]}
             >
               Сонник
@@ -251,25 +254,29 @@ export default function DreamBookScreen() {
             onPress={() => selectTab("history")}
             style={({ pressed }) => [
               styles.segOption,
-              active === "history" && styles.segOptionActive,
               pressed && { opacity: 0.92 },
             ]}
             testID="dreambook-tab-history"
           >
             {active === "history" ? (
-              <LinearGradient
-                colors={["rgba(239,160,192,0.45)", "rgba(157,124,230,0.28)"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFill}
-              />
+              <View pointerEvents="none" style={styles.segFill}>
+                <LinearGradient
+                  colors={["rgba(239,160,192,0.45)", "rgba(157,124,230,0.28)"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              </View>
             ) : null}
             <History
               color={active === "history" ? theme.colors.text : theme.colors.textDim}
               size={17}
               strokeWidth={active === "history" ? 2 : 1.6}
             />
-            <Text style={[styles.segText, active === "history" && styles.segTextActive]}>
+            <Text
+              numberOfLines={1}
+              style={[styles.segText, active === "history" && styles.segTextActive]}
+            >
               История снов
             </Text>
           </Pressable>
@@ -539,28 +546,37 @@ const styles = StyleSheet.create({
   segmentPill: {
     flexDirection: "row",
     alignSelf: "stretch",
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: theme.colors.borderStrong,
-    backgroundColor: "rgba(26,23,43,0.88)",
+    overflow: "visible",
     padding: 4,
     gap: 4,
   },
+  segmentBg: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: theme.colors.borderStrong,
+    backgroundColor: "rgba(26,23,43,0.72)",
+    overflow: "hidden",
+  },
   segOption: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    minWidth: 0,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
     paddingVertical: 9,
     paddingHorizontal: 8,
-    borderRadius: 999,
-    overflow: "hidden",
-    minWidth: 0,
+    overflow: "visible",
   },
-  segOptionActive: {
+  segFill: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 999,
     borderWidth: 1,
     borderColor: theme.colors.borderGold,
+    overflow: "hidden",
   },
   segText: {
     fontFamily: theme.fonts.bodySemi,

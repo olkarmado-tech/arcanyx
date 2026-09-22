@@ -63,9 +63,13 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     <View pointerEvents="box-none" style={styles.tabBarDock}>
       <View style={styles.tabBar}>
         <View pointerEvents="none" style={styles.tabBarClip}>
-          <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill}>
+          {Platform.OS === "android" ? (
             <View style={styles.tabBarOverlay} />
-          </BlurView>
+          ) : (
+            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill}>
+              <View style={styles.tabBarOverlay} />
+            </BlurView>
+          )}
         </View>
         <View style={styles.tabBarRow}>
           {state.routes.map((route, index) => {
@@ -216,12 +220,12 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     borderRadius: 30,
     borderWidth: 1,
-    borderColor: theme.colors.archive.rule,
-    backgroundColor: "rgba(12,11,17,0.92)",
+    borderColor: "rgba(243,237,249,0.16)",
+    backgroundColor: "transparent",
     overflow: "hidden",
     shadowColor: "#05030D",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
+    shadowOpacity: 0.35,
     shadowRadius: 24,
   },
   tabBarRow: {
@@ -232,7 +236,8 @@ const styles = StyleSheet.create({
   },
   tabBarOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(12,11,17,0.92)",
+    backgroundColor:
+      Platform.OS === "android" ? "rgba(28,22,48,0.58)" : "rgba(18,16,34,0.42)",
   },
   tabBarItem: {
     flexGrow: 1,

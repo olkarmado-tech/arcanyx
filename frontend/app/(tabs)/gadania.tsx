@@ -55,22 +55,24 @@ export default function GadaniaScreen() {
       {active === "tarot" ? <CosmicBackground variant="tarot" /> : null}
       <SafeAreaView edges={["top"]} style={styles.segmentSafe}>
         <View style={styles.segmentPill}>
+          <View pointerEvents="none" style={styles.segmentBg} />
           <Pressable
             onPress={() => select("oracle")}
             style={({ pressed }) => [
               styles.segOption,
-              active === "oracle" && styles.segOptionActive,
               pressed && { opacity: 0.92 },
             ]}
             testID="gadania-tab-oracle"
           >
             {active === "oracle" ? (
-              <LinearGradient
-                colors={["rgba(239,160,192,0.45)", "rgba(157,124,230,0.28)"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFill}
-              />
+              <View pointerEvents="none" style={styles.segFill}>
+                <LinearGradient
+                  colors={["rgba(239,160,192,0.45)", "rgba(157,124,230,0.28)"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              </View>
             ) : null}
             <Image
               source={ICON_ORACLE}
@@ -83,6 +85,7 @@ export default function GadaniaScreen() {
               contentFit="contain"
             />
             <Text
+              numberOfLines={1}
               style={[
                 styles.segText,
                 active === "oracle" && styles.segTextActive,
@@ -95,18 +98,19 @@ export default function GadaniaScreen() {
             onPress={() => select("tarot")}
             style={({ pressed }) => [
               styles.segOption,
-              active === "tarot" && styles.segOptionActive,
               pressed && { opacity: 0.92 },
             ]}
             testID="gadania-tab-tarot"
           >
             {active === "tarot" ? (
-              <LinearGradient
-                colors={["rgba(239,160,192,0.45)", "rgba(157,124,230,0.28)"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFill}
-              />
+              <View pointerEvents="none" style={styles.segFill}>
+                <LinearGradient
+                  colors={["rgba(239,160,192,0.45)", "rgba(157,124,230,0.28)"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              </View>
             ) : null}
             <Image
               source={ICON_CARD}
@@ -119,6 +123,7 @@ export default function GadaniaScreen() {
               contentFit="contain"
             />
             <Text
+              numberOfLines={1}
               style={[styles.segText, active === "tarot" && styles.segTextActive]}
             >
               Таро
@@ -171,12 +176,17 @@ const styles = StyleSheet.create({
   segmentPill: {
     flexDirection: "row",
     alignSelf: "center",
+    overflow: "visible",
+    padding: 4,
+    gap: 4,
+  },
+  segmentBg: {
+    ...StyleSheet.absoluteFillObject,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: theme.colors.borderStrong,
-    backgroundColor: "rgba(26,23,43,0.88)",
-    padding: 4,
-    gap: 4,
+    backgroundColor: "rgba(26,23,43,0.72)",
+    overflow: "hidden",
   },
   segOption: {
     flexDirection: "row",
@@ -184,14 +194,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 7,
     paddingVertical: 9,
-    paddingHorizontal: 18,
-    borderRadius: 999,
-    overflow: "hidden",
-    minWidth: 118,
+    paddingHorizontal: 16,
+    overflow: "visible",
   },
-  segOptionActive: {
+  segFill: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 999,
     borderWidth: 1,
     borderColor: theme.colors.borderGold,
+    overflow: "hidden",
   },
   segText: {
     fontFamily: theme.fonts.bodySemi,
