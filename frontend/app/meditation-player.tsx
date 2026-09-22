@@ -55,6 +55,7 @@ const LOADER_SIZE = 42;
 const LOADER_STROKE = 3.5;
 const LOADER_RADIUS = (LOADER_SIZE - LOADER_STROKE) / 2;
 const LOADER_CIRCUMFERENCE = 2 * Math.PI * LOADER_RADIUS;
+const preparedAudioUrls = new Set<string>();
 
 function FillingAudioLoader() {
   const [fill] = useState(() => new Animated.Value(0.06));
@@ -131,8 +132,13 @@ function MeditationTransport({
   );
   const status = useAudioPlayerStatus(player);
   const audioReady = status.isLoaded || status.duration > 0;
+  const [wasPrepared] = useState(() => preparedAudioUrls.has(audioUrl));
   const [barWidth, setBarWidth] = useState(1);
   const autoPlayedFor = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (audioReady) preparedAudioUrls.add(audioUrl);
+  }, [audioReady, audioUrl]);
 
   useEffect(() => {
     return () => {
@@ -237,7 +243,7 @@ function MeditationTransport({
         >
           {status.playing ? (
             <Pause color={theme.colors.text} size={26} strokeWidth={1.7} />
-          ) : !audioReady && !failed ? (
+          ) : !audioReady && !failed && !wasPrepared ? (
             <FillingAudioLoader />
           ) : (
             <Play
