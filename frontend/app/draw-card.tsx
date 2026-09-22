@@ -43,6 +43,7 @@ import {
   X,
 } from "lucide-react-native";
 import { theme } from "../src/theme";
+import { useScrollAboveKeyboard } from "../src/hooks/useKeyboardOverlap";
 import CosmicBackground from "../src/components/CosmicBackground";
 import TarotCard from "../src/components/TarotCard";
 import Sparkles from "../src/components/Sparkles";
@@ -119,6 +120,12 @@ export default function DrawCardScreen() {
   const [sharing, setSharing] = useState(false);
   const sharePosterRef = useRef<View>(null);
   const shareImageReadyRef = useRef(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const intentRef = useRef<View>(null);
+  const intentKeyboard = useScrollAboveKeyboard({
+    scrollRef,
+    getTarget: () => intentRef.current,
+  });
 
   // Reduced-motion detection (subscribes for live changes)
   useEffect(() => {
@@ -280,15 +287,20 @@ export default function DrawCardScreen() {
           </Pressable>
         </View>
 
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={undefined}>
           <ScrollView
-            contentContainerStyle={styles.scroll}
+            ref={scrollRef}
+            contentContainerStyle={[
+              styles.scroll,
+              intentKeyboard.overlap > 0 && {
+                paddingBottom: 32 + intentKeyboard.overlap,
+              },
+            ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            automaticallyAdjustKeyboardInsets
+            automaticallyAdjustKeyboardInsets={false}
+            onScroll={intentKeyboard.onScroll}
+            scrollEventThrottle={16}
           >
             {phase === "loading" && (
               <View style={styles.center}>
@@ -312,6 +324,9 @@ export default function DrawCardScreen() {
                 intentionOpen={intentionOpen}
                 onToggleIntention={() => setIntentionOpen((v) => !v)}
                 reduceMotion={reduceMotion}
+                intentRef={intentRef}
+                onIntentFocus={intentKeyboard.onFocus}
+                onIntentBlur={intentKeyboard.onBlur}
               />
             )}
 
@@ -351,6 +366,9 @@ type ChooseProps = {
   intentionOpen: boolean;
   onToggleIntention: () => void;
   reduceMotion: boolean;
+  intentRef: React.RefObject<View | null>;
+  onIntentFocus: () => void;
+  onIntentBlur: () => void;
 };
 
 function ChooseBlock({
@@ -363,6 +381,9 @@ function ChooseBlock({
   intentionOpen,
   onToggleIntention,
   reduceMotion,
+  intentRef,
+  onIntentFocus,
+  onIntentBlur,
 }: ChooseProps) {
   return (
     <View style={styles.chooseWrap}>
@@ -403,6 +424,7 @@ function ChooseBlock({
         </Pressable>
         {intentionOpen && (
           <Animated.View entering={FadeIn.duration(220)} style={styles.intentBox}>
+            <View ref={intentRef} collapsable={false}>
             <TextInput
               value={intention}
               onChangeText={onChangeIntention}
@@ -413,7 +435,10 @@ function ChooseBlock({
               multiline
               editable={phase === "choosing"}
               testID="intent-input"
+              onFocus={onIntentFocus}
+              onBlur={onIntentBlur}
             />
+            </View>
           </Animated.View>
         )}
       </Animated.View>
@@ -876,12 +901,11 @@ const styles = StyleSheet.create({
   },
   intentInput: {
     color: theme.colors.text,
-    fontFamily: theme.fonts.heading,
+    fontFamily: theme.fonts.headingItalic,
     fontSize: 15,
     lineHeight: 22,
     minHeight: 48,
     padding: 0,
-    fontStyle: "italic",
   },
 
   /* Cards row */
@@ -925,7 +949,6 @@ const styles = StyleSheet.create({
     color: theme.colors.textDim,
     fontFamily: theme.fonts.body,
     fontSize: 12.5,
-    fontStyle: "italic",
     marginTop: 18,
   },
 
@@ -1109,7 +1132,7 @@ const styles = StyleSheet.create({
   /* Error */
   errorTitle: {
     color: theme.colors.archive.headline,
-    fontWeight: "700",
+    fontFamily: theme.fonts.heading,
     fontSize: 22,
     textAlign: "center",
   },

@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -32,6 +31,7 @@ import { useRouter, useScrollToTop } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { ArrowLeft, PenLine, Sparkles, Fingerprint } from "lucide-react-native";
 import { theme } from "../theme";
+import { useScrollAboveKeyboard } from "../hooks/useKeyboardOverlap";
 import ScreenHeading from "../components/ScreenHeading";
 import CosmicBackground from "../components/CosmicBackground";
 import GlassCard from "../components/GlassCard";
@@ -289,6 +289,11 @@ export default function OracleScreen({
   const { items, hydrated } = useHistory();
   const appliedArchiveRef = useRef(false);
   const scrollRef = useRef<ScrollView>(null);
+  const questionBlockRef = useRef<View>(null);
+  const questionKeyboard = useScrollAboveKeyboard({
+    scrollRef,
+    getTarget: () => questionBlockRef.current,
+  });
   useScrollToTop(scrollRef);
   const [question, setQuestion] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
@@ -489,17 +494,21 @@ export default function OracleScreen({
             </Pressable>
           </View>
         ) : null}
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={undefined}>
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <ScrollView
               ref={scrollRef}
-              contentContainerStyle={styles.scroll}
+              contentContainerStyle={[
+                styles.scroll,
+                questionKeyboard.overlap > 0 && {
+                  paddingBottom: questionKeyboard.overlap,
+                },
+              ]}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
-              automaticallyAdjustKeyboardInsets
+              automaticallyAdjustKeyboardInsets={false}
+              onScroll={questionKeyboard.onScroll}
+              scrollEventThrottle={16}
             >
               <View style={[styles.hero, { height: heroHeight }]}>
                 {/* Слой выше героя на nudge: прижат снизу — шар ниже в кадре без пустой полосы сверху */}
@@ -629,6 +638,7 @@ export default function OracleScreen({
               </View>
 
               <View style={styles.content}>
+                <View ref={questionBlockRef} collapsable={false}>
                 <GlassCard
                   glow="purple"
                   borderColor={theme.colors.borderPurple}
@@ -658,6 +668,8 @@ export default function OracleScreen({
                       ]}
                       multiline
                       editable={formUnlocked}
+                      onFocus={questionKeyboard.onFocus}
+                      onBlur={questionKeyboard.onBlur}
                     />
                     <PenLine color={theme.colors.lilac} size={18} />
                   </View>
@@ -705,6 +717,7 @@ export default function OracleScreen({
                   </LinearGradient>
                 </Pressable>
                 )}
+                </View>
 
                 <View style={styles.sourceSection}>
                 <Text style={styles.sourceTitle}>Кто отвечает?</Text>
@@ -804,10 +817,9 @@ export default function OracleScreen({
 /** Общая типографика текста на шаре (ответ и подсказка «удерживайте»). */
 const oracleBallTextBase = {
   color: theme.colors.text,
-  fontFamily: theme.fonts.heading,
+  fontFamily: theme.fonts.headingItalic,
   fontSize: 22,
   lineHeight: 28,
-  fontStyle: "italic" as const,
   textAlign: "center" as const,
   textShadowColor: "rgba(0,0,0,0.35)",
   textShadowOffset: { width: 0, height: 1 },

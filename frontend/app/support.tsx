@@ -1,8 +1,7 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -27,6 +26,7 @@ import {
   type SupportCategory,
 } from "../src/services/support";
 import { theme } from "../src/theme";
+import { useScrollAboveKeyboard } from "../src/hooks/useKeyboardOverlap";
 
 type FaqItem = {
   id: string;
@@ -77,6 +77,14 @@ export default function SupportScreen() {
   const [sending, setSending] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
   const resolvedEmail = email ?? profileEmail ?? "";
+  const scrollRef = useRef<ScrollView>(null);
+  const emailFieldRef = useRef<View>(null);
+  const messageFieldRef = useRef<View>(null);
+  const activeFieldRef = useRef<View | null>(null);
+  const formKeyboard = useScrollAboveKeyboard({
+    scrollRef,
+    getTarget: () => activeFieldRef.current,
+  });
 
   const handleBack = () => {
     if (router.canGoBack()) router.back();
@@ -153,17 +161,20 @@ export default function SupportScreen() {
           <View style={styles.headerSpacer} />
         </View>
 
-        <KeyboardAvoidingView
-          style={styles.keyboard}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
+        <KeyboardAvoidingView style={styles.keyboard} behavior={undefined}>
           <ScrollView
+            ref={scrollRef}
             style={styles.scroll}
-            contentContainerStyle={styles.content}
+            contentContainerStyle={[
+              styles.content,
+              formKeyboard.overlap > 0 && { paddingBottom: 28 + formKeyboard.overlap },
+            ]}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="interactive"
-            automaticallyAdjustKeyboardInsets
+            automaticallyAdjustKeyboardInsets={false}
             showsVerticalScrollIndicator={false}
+            onScroll={formKeyboard.onScroll}
+            scrollEventThrottle={16}
           >
             {requestId ? (
               <View style={styles.success}>
@@ -244,6 +255,7 @@ export default function SupportScreen() {
                 </View>
 
                 <Text style={styles.fieldLabel}>Email для ответа</Text>
+                <View ref={emailFieldRef} collapsable={false}>
                 <TextInput
                   value={resolvedEmail}
                   onChangeText={(value) => {
@@ -259,8 +271,15 @@ export default function SupportScreen() {
                   style={styles.input}
                   editable={!sending}
                   testID="support-email-input"
+                  onFocus={() => {
+                    activeFieldRef.current = emailFieldRef.current;
+                    formKeyboard.onFocus();
+                  }}
+                  onBlur={formKeyboard.onBlur}
                 />
+                </View>
 
+                <View ref={messageFieldRef} collapsable={false}>
                 <View style={styles.messageLabelRow}>
                   <Text style={styles.fieldLabel}>Сообщение</Text>
                   <Text style={styles.counter}>
@@ -281,6 +300,11 @@ export default function SupportScreen() {
                   textAlignVertical="top"
                   editable={!sending}
                   testID="support-message-input"
+                  onFocus={() => {
+                    activeFieldRef.current = messageFieldRef.current;
+                    formKeyboard.onFocus();
+                  }}
+                  onBlur={formKeyboard.onBlur}
                 />
 
                 {formError ? (
@@ -313,6 +337,7 @@ export default function SupportScreen() {
                     </>
                   )}
                 </Pressable>
+                </View>
                 <Text style={styles.privacy}>
                   Email используется только для ответа на ваше обращение.
                 </Text>

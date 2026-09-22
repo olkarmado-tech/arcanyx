@@ -52,6 +52,7 @@ import {
   Share,
 } from "lucide-react-native";
 import { theme } from "../theme";
+import { useKeyboardOverlap } from "../hooks/useKeyboardOverlap";
 import CosmicBackground from "../components/CosmicBackground";
 import GlassCard from "../components/GlassCard";
 import ScreenHeading from "../components/ScreenHeading";
@@ -310,7 +311,7 @@ export default function TarotScreen({
   embedded = false,
   historyId,
 }: TarotScreenProps) {
-  const { width } = useWindowDimensions();
+  const { width, height: windowHeight } = useWindowDimensions();
   const router = useRouter();
   const { addItem, updateItem, items, hydrated } = useHistory();
   const { isPro } = useUser();
@@ -345,6 +346,7 @@ export default function TarotScreen({
   );
 
   const [intuitionOpen, setIntuitionOpen] = useState(false);
+  const intuitionKeyboard = useKeyboardOverlap(intuitionOpen);
   const [intuitionText, setIntuitionText] = useState("");
   const [previewCard, setPreviewCard] = useState<OrientedTarotCard | null>(null);
   const [savedIntuition, setSavedIntuition] = useState<string>("");
@@ -1908,8 +1910,11 @@ export default function TarotScreen({
         onRequestClose={closeIntuitionModal}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalRoot}
+          behavior={undefined}
+          style={[
+            styles.modalRoot,
+            { paddingBottom: intuitionKeyboard },
+          ]}
         >
           <Animated.View
             entering={FadeIn.duration(250)}
@@ -1918,7 +1923,10 @@ export default function TarotScreen({
           />
           <Animated.View
             entering={FadeInDown.duration(300).springify()}
-            style={styles.modalCardWrap}
+            style={[
+              styles.modalCardWrap,
+              { maxHeight: Math.max(220, windowHeight - intuitionKeyboard - 48) },
+            ]}
           >
             <GlassCard
               glow="purple"
@@ -2540,8 +2548,7 @@ const styles = StyleSheet.create({
   },
   shortText: {
     color: theme.colors.text,
-    fontFamily: theme.fonts.heading,
-    fontStyle: "italic",
+    fontFamily: theme.fonts.headingItalic,
     fontSize: 17,
     lineHeight: 24,
   },
@@ -2562,8 +2569,7 @@ const styles = StyleSheet.create({
   },
   intuitionSavedText: {
     color: theme.colors.text,
-    fontFamily: theme.fonts.heading,
-    fontStyle: "italic",
+    fontFamily: theme.fonts.headingItalic,
     fontSize: 16,
     lineHeight: 22,
   },
@@ -2746,8 +2752,7 @@ const styles = StyleSheet.create({
   previewShort: {
     marginTop: 10,
     color: theme.colors.text,
-    fontFamily: theme.fonts.heading,
-    fontStyle: "italic",
+    fontFamily: theme.fonts.headingItalic,
     fontSize: 16,
     lineHeight: 23,
     textAlign: "center",

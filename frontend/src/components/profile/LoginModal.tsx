@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -199,14 +198,7 @@ export default function LoginModal({ visible, onClose }: Props) {
 
   return (
     <PopupSheet visible={visible} onClose={onClose}>
-      <ScrollView
-        style={styles.formScroll}
-        contentContainerStyle={styles.formContent}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={styles.formContent}>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.subtitle}>
         Сохраните связь со своим внутренним миром. История раскладов и снов будет с вами на любом устройстве.
@@ -342,7 +334,7 @@ export default function LoginModal({ visible, onClose }: Props) {
           </>
         )}
       </Pressable>
-      </ScrollView>
+      </View>
     </PopupSheet>
   );
 }
@@ -355,12 +347,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
     textAlign: "center",
   },
-  formScroll: {
-    alignSelf: "stretch",
-    flexGrow: 1,
-    flexShrink: 1,
-  },
   formContent: {
+    alignSelf: "stretch",
     alignItems: "center",
     paddingBottom: 8,
   },

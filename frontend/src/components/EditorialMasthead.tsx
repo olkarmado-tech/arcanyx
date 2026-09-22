@@ -35,7 +35,7 @@ type Props = {
 
 /**
  * Editorial masthead in the Arcanyx visual-archive style: a hairline rule, a
- * letterspaced eyebrow, and a two-line headline that hands off from the UI sans
+ * letterspaced eyebrow, and a two-line headline that hands off from Manrope
  * to an italic serif. Meant for index/archive surfaces — it deliberately reads
  * colder and quieter than the app's card UI.
  */
@@ -152,9 +152,8 @@ const styles = StyleSheet.create({
   },
   lead: {
     color: theme.colors.archive.headline,
-    // No fontFamily: this is the platform UI sans (SF Pro on iOS), as in the mock.
-    fontWeight: "700",
-    letterSpacing: -0.7,
+    fontFamily: theme.fonts.bodySemi,
+    letterSpacing: -0.4,
   },
   accent: {
     color: theme.colors.archive.accent,

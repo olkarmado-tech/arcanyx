@@ -3,7 +3,6 @@ import { useFocusEffect, useLocalSearchParams, useRouter, useScrollToTop } from 
 import * as Haptics from "expo-haptics";
 import {
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -45,6 +44,7 @@ import ScreenHeading from "../../src/components/ScreenHeading";
 import DreamHistoryScreen from "../../src/screens/DreamHistoryScreen";
 import DreamInterpretLoadingScreen from "../../src/screens/DreamInterpretLoadingScreen";
 import { useRemountOnTabFocus } from "../../src/hooks/useRemountOnTabFocus";
+import { useScrollAboveKeyboard } from "../../src/hooks/useKeyboardOverlap";
 import { useHistory } from "../../src/context/HistoryContext";
 import { useDreamDictation } from "../../src/hooks/useDreamDictation";
 import {
@@ -82,6 +82,11 @@ export default function DreamBookScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+  const dreamFieldRef = useRef<View>(null);
+  const dreamKeyboard = useScrollAboveKeyboard({
+    scrollRef,
+    getTarget: () => dreamFieldRef.current,
+  });
   useScrollToTop(scrollRef);
   const [active, setActive] = useState<DreamBookTab>(() =>
     tab === "history" ? "history" : "interpret",
@@ -276,17 +281,19 @@ export default function DreamBookScreen() {
           <DreamHistoryScreen key={`dream-history-${remountKey}`} embedded />
         ) : (
           <SafeAreaView style={styles.safe} edges={["bottom"]}>
-            <KeyboardAvoidingView
-              style={{ flex: 1 }}
-              behavior={Platform.OS === "ios" ? "padding" : undefined}
-            >
+            <KeyboardAvoidingView style={{ flex: 1 }} behavior={undefined}>
               <ScrollView
                 ref={scrollRef}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[
+                  styles.scrollContent,
+                  dreamKeyboard.overlap > 0 && { paddingBottom: 24 + dreamKeyboard.overlap },
+                ]}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
-                automaticallyAdjustKeyboardInsets
+                automaticallyAdjustKeyboardInsets={false}
                 nestedScrollEnabled
+                onScroll={dreamKeyboard.onScroll}
+                scrollEventThrottle={16}
               >
             {/* Заголовок — как Оракул / Таро: центр, ✦, display, подзаголовок */}
             <ScreenHeading
@@ -296,6 +303,7 @@ export default function DreamBookScreen() {
 
             <View style={styles.contentWrap}>
               {/* Карточка ввода — тот же приём, что блок снов на главной */}
+              <View ref={dreamFieldRef} collapsable={false}>
               <GlassCard
                 borderColor={theme.colors.borderPurple}
                 glow="purple"
@@ -354,6 +362,8 @@ export default function DreamBookScreen() {
                       maxLength={DREAM_TEXT_MAX_LENGTH}
                       style={styles.dreamInput}
                       underlineColorAndroid="transparent"
+                      onFocus={dreamKeyboard.onFocus}
+                      onBlur={dreamKeyboard.onBlur}
                     />
 
                     {dictation.isAvailable ? (
@@ -437,6 +447,7 @@ export default function DreamBookScreen() {
                   {error ? <Text style={styles.errorText}>{error}</Text> : null}
                 </View>
               </GlassCard>
+              </View>
 
               <View style={styles.sectionHeadBetween}>
                 <Text style={styles.sectionLabelTight}>Недавние толкования</Text>
@@ -721,7 +732,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     color: theme.colors.textDim,
-    fontStyle: "italic",
   },
   dictationError: {
     marginTop: 8,

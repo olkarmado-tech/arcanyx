@@ -24,14 +24,16 @@ function TabBarIcon({
 }: IconProps & { Icon: TabIconComponent; label: string }) {
   return (
     <View style={styles.iconWrap}>
-      <View style={[styles.activePill, focused && styles.activePillFocused]}>
+      <View style={styles.activePill}>
         {focused && (
-          <LinearGradient
-            colors={["rgba(201,168,255,0.16)", "rgba(44,35,64,0.28)"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
+          <View pointerEvents="none" style={styles.activePillFill}>
+            <LinearGradient
+              colors={["rgba(201,168,255,0.16)", "rgba(44,35,64,0.28)"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </View>
         )}
         <View style={styles.iconCircle}>
           <Icon
@@ -60,9 +62,11 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   return (
     <View pointerEvents="box-none" style={styles.tabBarDock}>
       <View style={styles.tabBar}>
-        <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill}>
-          <View style={styles.tabBarOverlay} />
-        </BlurView>
+        <View pointerEvents="none" style={styles.tabBarClip}>
+          <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill}>
+            <View style={styles.tabBarOverlay} />
+          </BlurView>
+        </View>
         <View style={styles.tabBarRow}>
           {state.routes.map((route, index) => {
             const focused = state.index === index;
@@ -88,10 +92,11 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               <PlatformPressable
                 key={route.key}
                 onPress={onPress}
-                style={[styles.tabBarItem, { justifyContent: "center" }]}
+                style={styles.tabBarItem}
                 accessibilityRole="button"
                 accessibilityState={focused ? { selected: true } : {}}
                 testID={options.tabBarButtonTestID}
+                collapsable={false}
               >
                 {icon}
               </PlatformPressable>
@@ -203,12 +208,17 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     height: 70,
+    overflow: "visible",
+    backgroundColor: "transparent",
+    elevation: 0,
+  },
+  tabBarClip: {
+    ...StyleSheet.absoluteFillObject,
     borderRadius: 30,
     borderWidth: 1,
     borderColor: theme.colors.archive.rule,
-    backgroundColor: "transparent",
+    backgroundColor: "rgba(12,11,17,0.92)",
     overflow: "hidden",
-    elevation: 12,
     shadowColor: "#05030D",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.45,
@@ -218,48 +228,58 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    overflow: "visible",
   },
   tabBarOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(12,11,17,0.92)",
   },
   tabBarItem: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    minWidth: 0,
     height: "100%",
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 0,
+    overflow: "visible",
+    backgroundColor: "transparent",
   },
   iconWrap: {
     alignItems: "center",
     justifyContent: "center",
-    width: "100%",
+    alignSelf: "stretch",
+    minWidth: 0,
+    overflow: "visible",
   },
   activePill: {
     alignItems: "center",
     justifyContent: "center",
-    minWidth: 44,
-    borderRadius: 22,
-    paddingHorizontal: 6,
+    alignSelf: "stretch",
+    minWidth: 0,
+    paddingHorizontal: 2,
     paddingVertical: 5,
-    overflow: "hidden",
+    overflow: "visible",
   },
-  activePillFocused: {
-    backgroundColor: "rgba(201,168,255,0.08)",
+  activePillFill: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: theme.colors.archive.rule,
-    shadowColor: theme.colors.archive.accent,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.14,
-    shadowRadius: 10,
+    backgroundColor: "rgba(201,168,255,0.08)",
+    overflow: "hidden",
   },
   iconCircle: {
-    width: 48,
+    alignSelf: "stretch",
+    minWidth: 0,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "transparent",
+    overflow: "visible",
   },
   iconLabel: {
+    width: "100%",
+    textAlign: "center",
     fontSize: 8,
     fontFamily: theme.fonts.bodyMedium,
     marginTop: 2,

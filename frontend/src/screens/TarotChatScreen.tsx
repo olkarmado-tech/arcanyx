@@ -1,9 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Keyboard,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -18,6 +16,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { ArrowLeft, ArrowRight, ArrowUp, Coins, Heart, Sparkles, TrendingUp, Users } from "lucide-react-native";
 import { theme } from "../theme";
+import { useScrollAboveKeyboard } from "../hooks/useKeyboardOverlap";
 import ScreenHeading from "../components/ScreenHeading";
 import CosmicBackground from "../components/CosmicBackground";
 import GlassCard from "../components/GlassCard";
@@ -126,8 +125,11 @@ export default function TarotChatScreen({ historyId }: Props) {
   const { getSpreadById } = useTarotSpreads();
   const scrollRef = useRef<ScrollView>(null);
   const questionAnchorRef = useRef<View>(null);
-  const scrollYRef = useRef(0);
-  const questionFocusedRef = useRef(false);
+  const questionKeyboard = useScrollAboveKeyboard({
+    scrollRef,
+    getTarget: () => questionAnchorRef.current,
+    gap: 96,
+  });
 
   const item = useMemo(
     () =>
@@ -236,30 +238,6 @@ export default function TarotChatScreen({ historyId }: Props) {
       scrollRef.current?.scrollToEnd({ animated: true });
     });
   }, []);
-
-  const scrollQuestionIntoView = useCallback(() => {
-    const scroll = scrollRef.current;
-    const anchor = questionAnchorRef.current;
-    if (!scroll || !anchor) return;
-    anchor.measureInWindow((_x, inputY) => {
-      scroll.measureInWindow((_sx, scrollY) => {
-        const delta = inputY - scrollY - 20;
-        if (Math.abs(delta) < 8) return;
-        scroll.scrollTo({
-          y: Math.max(0, scrollYRef.current + delta),
-          animated: true,
-        });
-      });
-    });
-  }, []);
-
-  useEffect(() => {
-    const show = Keyboard.addListener("keyboardDidShow", () => {
-      if (!questionFocusedRef.current) return;
-      requestAnimationFrame(scrollQuestionIntoView);
-    });
-    return () => show.remove();
-  }, [scrollQuestionIntoView]);
 
   const handleStart = useCallback(async () => {
     if (!item || sending) return;
@@ -476,11 +454,7 @@ export default function TarotChatScreen({ historyId }: Props) {
     <View style={styles.root} testID="tarot-chat-root">
       <CosmicBackground />
       <SafeAreaView style={styles.safe} edges={["top"]}>
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={0}
-        >
+        <KeyboardAvoidingView style={styles.flex} behavior={undefined}>
           <View style={styles.topBar}>
             <Pressable
               onPress={handleBack}
@@ -498,14 +472,17 @@ export default function TarotChatScreen({ historyId }: Props) {
           <ScrollView
             ref={scrollRef}
             style={styles.flex}
-            contentContainerStyle={styles.scroll}
+            contentContainerStyle={[
+              styles.scroll,
+              questionKeyboard.overlap > 0 && {
+                paddingBottom: 36 + questionKeyboard.overlap,
+              },
+            ]}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="interactive"
             showsVerticalScrollIndicator={false}
             scrollEventThrottle={16}
-            onScroll={(event) => {
-              scrollYRef.current = event.nativeEvent.contentOffset.y;
-            }}
+            onScroll={questionKeyboard.onScroll}
             onContentSizeChange={phase === "chat" ? scrollToEnd : undefined}
           >
             <ScreenHeading
@@ -618,12 +595,8 @@ export default function TarotChatScreen({ historyId }: Props) {
                         setQuestion(value.slice(0, TAROT_CHAT_QUESTION_MAX_LENGTH));
                         if (error) setError(null);
                       }}
-                      onFocus={() => {
-                        questionFocusedRef.current = true;
-                      }}
-                      onBlur={() => {
-                        questionFocusedRef.current = false;
-                      }}
+                      onFocus={questionKeyboard.onFocus}
+                      onBlur={questionKeyboard.onBlur}
                       placeholder="О чём вы хотите спросить карты?"
                       placeholderTextColor={theme.colors.textMuted}
                       multiline
@@ -782,7 +755,10 @@ export default function TarotChatScreen({ historyId }: Props) {
             <View
               style={[
                 styles.composer,
-                { paddingBottom: Math.max(insets.bottom, 8) },
+                {
+                  paddingBottom: Math.max(insets.bottom, 8),
+                  marginBottom: questionKeyboard.overlap,
+                },
               ]}
             >
               <View style={styles.inputRow}>
@@ -1103,7 +1079,6 @@ const styles = StyleSheet.create({
   typingText: {
     color: theme.colors.textDim,
     fontFamily: theme.fonts.bodyMedium,
-    fontStyle: "italic",
     fontSize: 14,
   },
   composer: {

@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import { useRemountOnTabFocus } from "../../src/hooks/useRemountOnTabFocus";
+import { useKeyboardOverlap } from "../../src/hooks/useKeyboardOverlap";
 import {
   Alert,
   ActivityIndicator,
@@ -14,6 +15,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
+  useWindowDimensions,
   type ImageSourcePropType,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -401,6 +403,12 @@ export default function DiaryScreen() {
   const [isLoginVisible, setLoginVisible] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [noteSheetWidth, setNoteSheetWidth] = useState(0);
+  const { height: windowHeight } = useWindowDimensions();
+  const noteKeyboard = useKeyboardOverlap(isNoteModalVisible);
+  const noteSheetMaxHeight = Math.max(
+    220,
+    windowHeight - noteKeyboard - Math.max(insets.top, 12) - 8,
+  );
 
   const openNoteModal = () => {
     Haptics.selectionAsync().catch(() => {});
@@ -818,8 +826,8 @@ export default function DiaryScreen() {
         onRequestClose={closeNoteModal}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.modalOverlay}
+          behavior={undefined}
+          style={[styles.modalOverlay, { paddingBottom: noteKeyboard }]}
         >
           <Pressable
             style={StyleSheet.absoluteFill}
@@ -828,7 +836,7 @@ export default function DiaryScreen() {
             accessibilityLabel="Закрыть окно заметки"
           />
           <View
-            style={styles.modalContent}
+            style={[styles.modalContent, { maxHeight: noteSheetMaxHeight }]}
             onLayout={(event) => setNoteSheetWidth(event.nativeEvent.layout.width)}
           >
             <GoldSheetRim
@@ -847,6 +855,12 @@ export default function DiaryScreen() {
               </Pressable>
             </View>
 
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              bounces={false}
+              showsVerticalScrollIndicator={false}
+              style={{ maxHeight: Math.max(160, noteSheetMaxHeight - 120) }}
+            >
             <TextInput
               style={styles.modalInput}
               placeholder="Что у вас на душе?"
@@ -878,6 +892,7 @@ export default function DiaryScreen() {
                 </Text>
               </LinearGradient>
             </Pressable>
+            </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -1275,8 +1290,7 @@ const styles = StyleSheet.create({
   },
   interpretationSnippet: {
     color: theme.colors.mauve,
-    fontFamily: theme.fonts.body,
-    fontStyle: "italic",
+    fontFamily: theme.fonts.headingItalic,
     fontSize: 12.5,
     lineHeight: 18,
     marginTop: 6,

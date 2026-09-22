@@ -53,6 +53,7 @@ import { DAILY_PHRASES } from "../../src/data/tarotCards";
 import { useHistory } from "../../src/context/HistoryContext";
 import { useUser } from "../../src/context/UserContext";
 import { todayKey, useDailyCard } from "../../src/hooks/useDailyCard";
+import { useScrollAboveKeyboard } from "../../src/hooks/useKeyboardOverlap";
 import { useDailyMeditation } from "../../src/hooks/useDailyMeditation";
 import { getCardReading } from "../../src/data/tarotReadings";
 import { getDailyQuote } from "../../src/data/dailyQuotes";
@@ -439,6 +440,11 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
+  const dreamSectionRef = useRef<View>(null);
+  const dreamKeyboard = useScrollAboveKeyboard({
+    scrollRef,
+    getTarget: () => dreamSectionRef.current,
+  });
   useScrollToTop(scrollRef);
   const { addItem, updateItem } = useHistory();
   const { name, isAuthenticated } = useUser();
@@ -658,17 +664,21 @@ export default function HomeScreen() {
         <DreamInterpretLoadingScreen />
       </Modal>
       <SafeAreaView style={styles.safe} edges={[]}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={undefined}>
           <ScrollView
             ref={scrollRef}
-            contentContainerStyle={styles.scroll}
+            contentContainerStyle={[
+              styles.scroll,
+              dreamKeyboard.overlap > 0 && { paddingBottom: dreamKeyboard.overlap },
+            ]}
             contentInsetAdjustmentBehavior="never"
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            automaticallyAdjustKeyboardInsets
+            keyboardDismissMode="interactive"
+            nestedScrollEnabled
+            automaticallyAdjustKeyboardInsets={false}
+            onScroll={dreamKeyboard.onScroll}
+            scrollEventThrottle={16}
             removeClippedSubviews={false}
             testID="home-scroll"
           >
@@ -1114,6 +1124,7 @@ export default function HomeScreen() {
           </GlassCard>
 
           {/* Dream interpretation */}
+          <View ref={dreamSectionRef} collapsable={false}>
           <GlassCard
             borderColor={theme.colors.borderPurple}
             style={styles.dreamCard}
@@ -1164,6 +1175,8 @@ export default function HomeScreen() {
                     multiline
                     scrollEnabled
                     textAlignVertical="top"
+                    onFocus={dreamKeyboard.onFocus}
+                    onBlur={dreamKeyboard.onBlur}
                     maxLength={DREAM_TEXT_MAX_LENGTH}
                     style={styles.dreamInput}
                     testID="dream-input"
@@ -1223,6 +1236,7 @@ export default function HomeScreen() {
               </Pressable>
             </View>
           </GlassCard>
+          </View>
 
           <View style={{ height: 140 }} />
           </View>
@@ -1298,6 +1312,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexShrink: 1,
     overflow: "visible",
+    fontFamily: theme.fonts.heading,
   },
   greetingSmall: {
     color: theme.colors.text,
@@ -1566,10 +1581,9 @@ const styles = StyleSheet.create({
   cardQuoteText: {
     flex: 1,
     color: theme.colors.textDim,
-    fontFamily: theme.fonts.heading,
+    fontFamily: theme.fonts.headingItalic,
     fontSize: 16,
-    lineHeight: 19,
-    fontStyle: "italic",
+    lineHeight: 22,
     paddingTop: 4,
   },
 
@@ -1611,7 +1625,7 @@ const styles = StyleSheet.create({
   quoteText: {
     flex: 1,
     color: theme.colors.text,
-    fontFamily: theme.fonts.heading,
+    fontFamily: theme.fonts.headingItalic,
     fontSize: 16,
     lineHeight: 22,
     maxWidth: 170,
@@ -1801,10 +1815,9 @@ const styles = StyleSheet.create({
   },
   dailyQuoteText: {
     color: theme.colors.text,
-    fontFamily: theme.fonts.heading,
+    fontFamily: theme.fonts.headingItalic,
     fontSize: 22,
-    lineHeight: 26,
-    fontStyle: "italic",
+    lineHeight: 28,
     paddingTop: 2,
   },
   dailyQuoteAuthor: {

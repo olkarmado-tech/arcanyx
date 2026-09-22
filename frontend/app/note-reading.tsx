@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,6 +18,7 @@ import { Check, Pencil, X } from "lucide-react-native";
 import CosmicBackground from "../src/components/CosmicBackground";
 import { useHistory } from "../src/context/HistoryContext";
 import { theme } from "../src/theme";
+import { useKeyboardOverlap } from "../src/hooks/useKeyboardOverlap";
 
 const NOTE_BG = require("../assets/home/chrome-aff.jpg");
 
@@ -41,6 +41,7 @@ export default function NoteReadingScreen() {
   const { items, updateItem } = useHistory();
   const [isEditing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  const noteKeyboard = useKeyboardOverlap(isEditing);
 
   const note = useMemo(
     () => items.find((item) => item.id === noteId && item.type === "note") ?? null,
@@ -154,8 +155,8 @@ export default function NoteReadingScreen() {
         </View>
 
         <KeyboardAvoidingView
-          style={styles.content}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={[styles.content, isEditing && noteKeyboard > 0 && { paddingBottom: noteKeyboard }]}
+          behavior={undefined}
         >
           {!note ? (
             <View style={styles.empty}>
@@ -164,35 +165,21 @@ export default function NoteReadingScreen() {
                 <Text style={styles.emptyButtonText}>Вернуться в дневник</Text>
               </Pressable>
             </View>
-          ) : (
+          ) : isEditing ? (
             <>
-              <ScrollView
-                contentContainerStyle={styles.scroll}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                automaticallyAdjustKeyboardInsets
-              >
-                {isEditing ? (
-                  <TextInput
-                    value={draft}
-                    onChangeText={setDraft}
-                    multiline
-                    autoFocus
-                    textAlignVertical="top"
-                    style={styles.input}
-                    placeholder="Что у вас на душе?"
-                    placeholderTextColor={theme.colors.textMuted}
-                    testID="note-reading-input"
-                  />
-                ) : (
-                  <Text style={styles.noteText} selectable>
-                    {note.answer}
-                  </Text>
-                )}
-              </ScrollView>
-
-              {isEditing ? (
-                <View style={styles.editActions}>
+              <TextInput
+                value={draft}
+                onChangeText={setDraft}
+                multiline
+                autoFocus
+                scrollEnabled
+                textAlignVertical="top"
+                style={[styles.input, styles.inputEditing]}
+                placeholder="Что у вас на душе?"
+                placeholderTextColor={theme.colors.textMuted}
+                testID="note-reading-input"
+              />
+              <View style={styles.editActions}>
                   <Pressable onPress={cancelEditing} style={styles.cancelButton}>
                     <Text style={styles.cancelText}>Отмена</Text>
                   </Pressable>
@@ -217,8 +204,17 @@ export default function NoteReadingScreen() {
                     </LinearGradient>
                   </Pressable>
                 </View>
-              ) : null}
             </>
+          ) : (
+            <ScrollView
+              contentContainerStyle={styles.scroll}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Text style={styles.noteText} selectable>
+                {note.answer}
+              </Text>
+            </ScrollView>
           )}
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -287,6 +283,12 @@ const styles = StyleSheet.create({
     fontSize: 28,
     lineHeight: 40,
     padding: 0,
+  },
+  inputEditing: {
+    flex: 1,
+    minHeight: 0,
+    marginHorizontal: 28,
+    marginTop: 28,
   },
   editActions: {
     flexDirection: "row",

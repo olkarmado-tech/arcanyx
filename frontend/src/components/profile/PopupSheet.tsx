@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
 import {
   ImageBackground,
-  Keyboard,
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   View,
   useWindowDimensions,
@@ -20,6 +19,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 import GoldSheetRim from "./GoldSheetRim";
+import { useKeyboardOverlap } from "../../hooks/useKeyboardOverlap";
 
 const POPUP_BG = require("../../../assets/home/bg-popup.jpg");
 const SHEET_RADIUS = 30;
@@ -34,13 +34,12 @@ export default function PopupSheet({ visible, onClose, children }: Props) {
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const [sheetWidth, setSheetWidth] = useState(0);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const keyboardHeight = useKeyboardOverlap(visible);
   const sheetY = useSharedValue(56);
 
   useEffect(() => {
     if (!visible) {
       sheetY.value = 56;
-      setKeyboardHeight(0);
       return;
     }
     sheetY.value = 56;
@@ -50,20 +49,6 @@ export default function PopupSheet({ visible, onClose, children }: Props) {
     });
   }, [visible, sheetY]);
 
-  useEffect(() => {
-    if (!visible) return;
-    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-    const show = Keyboard.addListener(showEvent, (event) => {
-      setKeyboardHeight(event.endCoordinates.height);
-    });
-    const hide = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, [visible]);
-
   const sheetAnimStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: sheetY.value }],
   }));
@@ -72,8 +57,12 @@ export default function PopupSheet({ visible, onClose, children }: Props) {
     setSheetWidth(event.nativeEvent.layout.width);
   };
 
-  const keyboardLift = Platform.OS === "ios" ? keyboardHeight : 0;
-  const sheetMaxHeight = Math.max(280, windowHeight - keyboardLift - 24);
+  // screenY is the keyboard top. If the window already resized, overlap is ~0.
+  const keyboardLift = keyboardHeight;
+  const sheetMaxHeight = Math.max(
+    240,
+    windowHeight - keyboardLift - Math.max(insets.top, 12) - 8,
+  );
 
   return (
     <Modal
@@ -86,16 +75,14 @@ export default function PopupSheet({ visible, onClose, children }: Props) {
       <View style={[styles.overlay, { paddingBottom: keyboardLift }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? undefined : "height"}
+          behavior={undefined}
           style={styles.sheetAvoid}
         >
           <Animated.View
             style={[
               styles.sheetWrap,
               sheetAnimStyle,
-              keyboardLift > 0
-                ? { height: sheetMaxHeight }
-                : { maxHeight: sheetMaxHeight },
+              { maxHeight: sheetMaxHeight },
             ]}
           >
             <ImageBackground
@@ -124,7 +111,16 @@ export default function PopupSheet({ visible, onClose, children }: Props) {
               >
                 <X color="#7C7696" size={22} />
               </Pressable>
-              <View style={styles.body}>{children}</View>
+              <ScrollView
+                style={{ maxHeight: Math.max(180, sheetMaxHeight - 56), alignSelf: "stretch" }}
+                contentContainerStyle={styles.body}
+                keyboardShouldPersistTaps="handled"
+                nestedScrollEnabled
+                showsVerticalScrollIndicator={false}
+                bounces={false}
+              >
+                {children}
+              </ScrollView>
             </ImageBackground>
           </Animated.View>
         </KeyboardAvoidingView>
@@ -183,9 +179,6 @@ const styles = StyleSheet.create({
   body: {
     alignItems: "center",
     paddingTop: 12,
-    zIndex: 1,
-    flexGrow: 1,
-    flexShrink: 1,
     alignSelf: "stretch",
   },
 });
