@@ -192,6 +192,7 @@ const styles = StyleSheet.create({
     borderColor: OUTER_GOLD,
     padding: RIM_GAP,
     backgroundColor: "#171429",
+    overflow: "hidden",
   },
   innerFrame: {
     borderWidth: INNER_BORDER,

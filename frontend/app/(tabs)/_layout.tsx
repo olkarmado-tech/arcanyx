@@ -2,9 +2,9 @@ import React from "react";
 import { Tabs } from "expo-router";
 import { StyleSheet, View, Text, Platform } from "react-native";
 import { BlurView } from "expo-blur";
-import { LinearGradient } from "expo-linear-gradient";
 import { CommonActions, PlatformPressable } from "expo-router/react-navigation";
 import type { BottomTabBarProps } from "expo-router/js-tabs";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Headphones, Wand2 } from "lucide-react-native";
 import {
   DreamTabIcon,
@@ -25,16 +25,7 @@ function TabBarIcon({
   return (
     <View style={styles.iconWrap}>
       <View style={styles.activePill}>
-        {focused && (
-          <View pointerEvents="none" style={styles.activePillFill}>
-            <LinearGradient
-              colors={["rgba(201,168,255,0.16)", "rgba(44,35,64,0.28)"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFill}
-            />
-          </View>
-        )}
+        {focused && <View pointerEvents="none" style={styles.activePillFill} />}
         <View style={styles.iconCircle}>
           <Icon
             color={color}
@@ -59,17 +50,24 @@ function TabBarIcon({
 }
 
 function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const insets = useSafeAreaInsets();
   return (
-    <View pointerEvents="box-none" style={styles.tabBarDock}>
+    <View
+      pointerEvents="box-none"
+      style={[styles.tabBarDock, { bottom: Math.max(insets.bottom, 8) + 10 }]}
+    >
       <View style={styles.tabBar}>
         <View pointerEvents="none" style={styles.tabBarClip}>
-          {Platform.OS === "android" ? (
+          <BlurView
+            intensity={28}
+            tint="dark"
+            blurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
+            blurReductionFactor={Platform.OS === "android" ? 1 : undefined}
+            style={StyleSheet.absoluteFill}
+          >
             <View style={styles.tabBarOverlay} />
-          ) : (
-            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill}>
-              <View style={styles.tabBarOverlay} />
-            </BlurView>
-          )}
+            <View style={styles.tabBarTopEdge} />
+          </BlurView>
         </View>
         <View style={styles.tabBarRow}>
           {state.routes.map((route, index) => {
@@ -206,27 +204,29 @@ export default function TabsLayout() {
 const styles = StyleSheet.create({
   tabBarDock: {
     position: "absolute",
-    left: 20,
-    right: 20,
-    bottom: Platform.OS === "ios" ? 24 : 16,
+    left: 16,
+    right: 16,
   },
   tabBar: {
     height: 70,
+    borderRadius: 28,
     overflow: "visible",
     backgroundColor: "transparent",
     elevation: 0,
+    shadowColor: "#05030D",
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.38,
+    shadowRadius: 18,
+    boxShadow: "0px -8px 22px rgba(5, 3, 13, 0.42)",
   },
   tabBarClip: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 30,
+    borderRadius: 28,
     borderWidth: 1,
-    borderColor: "rgba(243,237,249,0.16)",
-    backgroundColor: "transparent",
+    borderColor: "rgba(255,255,255,0.13)",
+    backgroundColor: "rgba(20,14,46,0.01)",
     overflow: "hidden",
-    shadowColor: "#05030D",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 24,
+    elevation: 0,
   },
   tabBarRow: {
     flex: 1,
@@ -236,8 +236,15 @@ const styles = StyleSheet.create({
   },
   tabBarOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor:
-      Platform.OS === "android" ? "rgba(28,22,48,0.58)" : "rgba(18,16,34,0.42)",
+    backgroundColor: "rgba(20,14,46,0.55)",
+  },
+  tabBarTopEdge: {
+    position: "absolute",
+    top: 0,
+    left: 18,
+    right: 18,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.14)",
   },
   tabBarItem: {
     flexGrow: 1,

@@ -23,23 +23,16 @@ import { HistoryProvider } from "../src/context/HistoryContext";
 import { MeditationFavoritesProvider } from "../src/context/MeditationFavoritesContext";
 import { TarotSpreadsProvider } from "../src/context/TarotSpreadsContext";
 import { UserProvider, useUser } from "../src/context/UserContext";
-import * as Notifications from "expo-notifications";
-import { setDailyQuoteNotificationsEnabled } from "../src/services/dailyQuoteNotifications";
+import {
+  installNotificationHandler,
+  setDailyQuoteNotificationsEnabled,
+} from "../src/services/dailyQuoteNotifications";
 import { theme } from "../src/theme";
 import { prefetchAppImages } from "../src/utils/prefetchImages";
 import AppIntro, { INTRO_BG } from "../src/components/AppIntro";
 
 WebBrowser.maybeCompleteAuthSession();
 SplashScreen.preventAutoHideAsync().catch(() => {});
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
 
 function AppStack() {
   const { hydrated, notificationsEnabled } = useUser();
@@ -88,6 +81,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     prefetchAppImages();
+    installNotificationHandler();
   }, []);
 
   // AppIntro hides the splash once its overlay is on screen; this only covers

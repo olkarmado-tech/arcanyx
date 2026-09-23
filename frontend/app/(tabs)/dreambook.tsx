@@ -702,6 +702,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     color: theme.colors.text,
+    backgroundColor: "transparent",
     // @ts-ignore - web only
     outlineStyle: "none",
   },

@@ -1004,6 +1004,7 @@ const styles = StyleSheet.create({
     maxHeight: 100,
     paddingTop: 0,
     paddingBottom: 0,
+    backgroundColor: "transparent",
     // @ts-ignore - web only
     outlineStyle: "none",
   },

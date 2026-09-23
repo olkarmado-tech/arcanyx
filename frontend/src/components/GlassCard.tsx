@@ -42,17 +42,27 @@ export default function GlassCard({
   const surfCol = surfaceColor ?? theme.colors.surfaceGlass;
   const overCol = overlayColor ?? "rgba(26,24,36,0.74)";
   const [backdropSize, setBackdropSize] = useState({ width: 0, height: 0 });
+  const clipRadius = radiusFrom(style) ?? theme.radius.lg;
+  // Android paints an opaque black plate behind any elevated view. Translucent
+  // inputs then show that plate as a dark rectangle, so keep the wash flat.
+  // The clip still needs overflow:hidden plus a background, or square corners
+  // of fills and images draw outside the rounded border.
+  const androidFlat = Platform.OS === "android" ? styles.androidFlat : null;
+  const androidClip =
+    Platform.OS === "android"
+      ? { overflow: "hidden" as const, borderRadius: clipRadius, backgroundColor: surfCol }
+      : null;
 
   if (allowOverflow) {
     const measured = backdropSize.width > 0 && backdropSize.height > 0;
     const frostOnNative = Platform.OS !== "web";
     return (
-      <View style={[styles.wrapper, glowStyle, style]} pointerEvents="box-none">
+      <View style={[styles.wrapper, glowStyle, androidFlat, style]} pointerEvents="box-none">
         <View
           style={[
             styles.overflowShell,
-            { borderColor: borderCol },
-            frostOnNative ? styles.overflowShellNativeFrost : null,
+            { borderColor: borderCol, borderRadius: clipRadius },
+            frostOnNative && Platform.OS !== "android" ? styles.overflowShellNativeFrost : null,
           ]}
           pointerEvents="box-none"
         >
@@ -61,6 +71,7 @@ export default function GlassCard({
           <View
             style={[
               styles.overflowBackdropClip,
+              { borderRadius: clipRadius, backgroundColor: surfCol },
               measured
                 ? { width: backdropSize.width, height: backdropSize.height }
                 : styles.overflowBackdropFallback,
@@ -101,10 +112,21 @@ export default function GlassCard({
   // A flat wash keeps the card one tone, matching the iOS glass.
   if (Platform.OS === "android") {
     return (
-      <View style={[styles.wrapper, glowStyle, style]} pointerEvents="box-none">
+      <View
+        style={[styles.wrapper, glowStyle, androidFlat, style, androidClip]}
+        pointerEvents="box-none"
+      >
         <View
           pointerEvents="box-none"
-          style={[styles.inner, { borderColor: borderCol, backgroundColor: surfCol }]}
+          style={[
+            styles.inner,
+            {
+              borderColor: borderCol,
+              backgroundColor: surfCol,
+              borderRadius: clipRadius,
+              overflow: "hidden",
+            },
+          ]}
         >
           <View style={[styles.bgOverlay, { backgroundColor: overCol }]} pointerEvents="none" />
           {children}
@@ -114,7 +136,7 @@ export default function GlassCard({
   }
 
   return (
-    <View style={[styles.wrapper, glowStyle, style]} pointerEvents="box-none">
+    <View style={[styles.wrapper, glowStyle, androidFlat, style]} pointerEvents="box-none">
       <BlurView
         intensity={intensity}
         tint={tint}
@@ -123,6 +145,7 @@ export default function GlassCard({
           styles.inner,
           {
             borderColor: borderCol,
+            borderRadius: clipRadius,
             // Fill on UIVisualEffectView kills iOS frost; keep the wash in the overlay.
             backgroundColor: "transparent",
           },
@@ -135,11 +158,20 @@ export default function GlassCard({
   );
 }
 
+function radiusFrom(style: StyleProp<ViewStyle>): number | undefined {
+  const flat = StyleSheet.flatten(style);
+  return typeof flat?.borderRadius === "number" ? flat.borderRadius : undefined;
+}
+
 const styles = StyleSheet.create({
   wrapper: {
     borderRadius: theme.radius.lg,
     overflow: "visible",
     ...theme.shadows.card,
+  },
+  androidFlat: {
+    elevation: 0,
+    shadowOpacity: 0,
   },
   inner: {
     borderRadius: theme.radius.lg,
