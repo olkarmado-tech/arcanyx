@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import { Tabs } from "expo-router";
 import { StyleSheet, View, Text, Platform } from "react-native";
-import { BlurView } from "expo-blur";
+import { BlurTargetView, BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import { CommonActions, PlatformPressable } from "expo-router/react-navigation";
 import type { BottomTabBarProps } from "expo-router/js-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,6 +16,22 @@ import { theme } from "../../src/theme";
 
 type IconProps = { color: string; focused: boolean };
 type TabIconComponent = React.ComponentType<Record<string, unknown>>;
+type TabBarLink = Pick<BottomTabBarProps, "state" | "navigation">;
+
+const TAB_CONFIG: Record<
+  string,
+  { label: string; testID: string; Icon: TabIconComponent }
+> = {
+  index: { label: "Сегодня", testID: "tab-home", Icon: HomeTabIcon },
+  gadania: { label: "Гадания", testID: "tab-gadania", Icon: Wand2 },
+  meditations: {
+    label: "Медитации",
+    testID: "tab-meditations",
+    Icon: Headphones,
+  },
+  dreambook: { label: "Сонник", testID: "tab-dreambook", Icon: DreamTabIcon },
+  diary: { label: "Профиль", testID: "tab-profile", Icon: ProfileTabIcon },
+};
 
 function TabBarIcon({
   Icon,
@@ -22,229 +39,193 @@ function TabBarIcon({
   focused,
   label,
 }: IconProps & { Icon: TabIconComponent; label: string }) {
+  const content = (
+    <View style={styles.iconCircle}>
+      <Icon
+        color={color}
+        width={focused ? 22 : 20}
+        height={focused ? 22 : 20}
+        size={focused ? 22 : 20}
+        strokeWidth={focused ? 2 : 1.6}
+      />
+      <Text style={[styles.iconLabel, { color }]} numberOfLines={1}>
+        {label}
+      </Text>
+    </View>
+  );
+
   return (
     <View style={styles.iconWrap}>
-      <View style={styles.activePill}>
-        {focused && <View pointerEvents="none" style={styles.activePillFill} />}
-        <View style={styles.iconCircle}>
-          <Icon
-            color={color}
-            width={focused ? 22 : 20}
-            height={focused ? 22 : 20}
-            size={focused ? 22 : 20}
-            strokeWidth={focused ? 2 : 1.6}
-          />
-          <Text
-            style={[
-              styles.iconLabel,
-              { color: focused ? theme.colors.text : theme.colors.textDim },
-            ]}
-            numberOfLines={1}
-          >
-            {label}
-          </Text>
-        </View>
-      </View>
+      {focused ? (
+        <LinearGradient
+          colors={theme.gradients.softLilac}
+          locations={[0, 0.5, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.activePill, styles.activePillFocused]}
+        >
+          {content}
+        </LinearGradient>
+      ) : (
+        <View style={styles.activePill}>{content}</View>
+      )}
     </View>
   );
 }
 
-function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+/**
+ * Rendered by the navigator in place of a tab bar. It only forwards the
+ * navigation state up so the real bar can live outside the blur target —
+ * Android can't blur a view hierarchy that contains the BlurView itself.
+ */
+function TabBarBridge({
+  state,
+  navigation,
+  onChange,
+}: TabBarLink & { onChange: (link: TabBarLink) => void }) {
+  useLayoutEffect(() => {
+    onChange({ state, navigation });
+  }, [state, navigation, onChange]);
+  return null;
+}
+
+function FloatingTabBar({
+  state,
+  navigation,
+  blurTarget,
+}: TabBarLink & { blurTarget: React.RefObject<View | null> }) {
   const insets = useSafeAreaInsets();
+  const isAndroid = Platform.OS === "android";
   return (
     <View
       pointerEvents="box-none"
       style={[styles.tabBarDock, { bottom: Math.max(insets.bottom, 8) + 10 }]}
     >
       <View style={styles.tabBar}>
-        <View pointerEvents="none" style={styles.tabBarClip}>
-          <BlurView
-            intensity={28}
-            tint="dark"
-            blurMethod={Platform.OS === "android" ? "dimezisBlurView" : undefined}
-            blurReductionFactor={Platform.OS === "android" ? 1 : undefined}
-            style={StyleSheet.absoluteFill}
-          >
-            <View style={styles.tabBarOverlay} />
-            <View style={styles.tabBarTopEdge} />
-          </BlurView>
-        </View>
-        <View style={styles.tabBarRow}>
-          {state.routes.map((route, index) => {
-            const focused = state.index === index;
-            const { options } = descriptors[route.key];
-            const color = focused
-              ? theme.colors.archive.accent
-              : theme.colors.textDim;
-            const icon = options.tabBarIcon?.({ focused, color, size: 22 });
-            const onPress = () => {
-              const event = navigation.emit({
-                type: "tabPress",
-                target: route.key,
-                canPreventDefault: true,
-              });
-              if (!focused && !event.defaultPrevented) {
-                navigation.dispatch({
-                  ...CommonActions.navigate(route.name, route.params),
-                  target: state.key,
+        <BlurView
+          intensity={isAndroid ? 60 : 40}
+          tint="dark"
+          blurMethod={isAndroid ? "dimezisBlurView" : undefined}
+          blurTarget={isAndroid ? blurTarget : undefined}
+          style={styles.tabBarGlass}
+        >
+          <View style={styles.tabBarRow}>
+            {state.routes.map((route, index) => {
+              const config = TAB_CONFIG[route.name];
+              if (!config) return null;
+              const focused = state.index === index;
+              const color = focused
+                ? theme.colors.softLilacText
+                : "rgba(201,196,220,0.78)";
+              const onPress = () => {
+                const event = navigation.emit({
+                  type: "tabPress",
+                  target: route.key,
+                  canPreventDefault: true,
                 });
-              }
-            };
-            return (
-              <PlatformPressable
-                key={route.key}
-                onPress={onPress}
-                style={styles.tabBarItem}
-                accessibilityRole="button"
-                accessibilityState={focused ? { selected: true } : {}}
-                testID={options.tabBarButtonTestID}
-                collapsable={false}
-              >
-                {icon}
-              </PlatformPressable>
-            );
-          })}
-        </View>
+                if (!focused && !event.defaultPrevented) {
+                  navigation.dispatch({
+                    ...CommonActions.navigate(route.name, route.params),
+                    target: state.key,
+                  });
+                }
+              };
+              return (
+                <PlatformPressable
+                  key={route.key}
+                  onPress={onPress}
+                  // Default Android ripple paints a dark rectangle over the whole slot.
+                  pressColor="transparent"
+                  style={styles.tabBarItem}
+                  accessibilityRole="button"
+                  accessibilityState={focused ? { selected: true } : {}}
+                  testID={config.testID}
+                  collapsable={false}
+                >
+                  <TabBarIcon
+                    Icon={config.Icon}
+                    color={color}
+                    focused={focused}
+                    label={config.label}
+                  />
+                </PlatformPressable>
+              );
+            })}
+          </View>
+        </BlurView>
       </View>
     </View>
   );
 }
 
 export default function TabsLayout() {
+  const blurTargetRef = useRef<View | null>(null);
+  const [link, setLink] = useState<TabBarLink | null>(null);
+
   return (
-    <Tabs
-      // `tabBar` is a navigator prop, not a screen option — screenOptions is ignored here.
-      tabBar={(props) => <FloatingTabBar {...props} />}
-      safeAreaInsets={{ bottom: 0 }}
-      screenOptions={{
-        headerShown: false,
-        tabBarShowLabel: false,
-        tabBarInactiveTintColor: theme.colors.textDim,
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Сегодня",
-          tabBarButtonTestID: "tab-home",
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon
-              Icon={HomeTabIcon}
-              color={color}
-              focused={focused}
-              label="Сегодня"
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="gadania"
-        options={{
-          title: "Гадания",
-          tabBarButtonTestID: "tab-gadania",
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon
-              Icon={Wand2}
-              color={color}
-              focused={focused}
-              label="Гадания"
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="meditations"
-        options={{
-          title: "Медитации",
-          tabBarButtonTestID: "tab-meditations",
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon
-              Icon={Headphones}
-              color={color}
-              focused={focused}
-              label="Медитации"
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="dreambook"
-        options={{
-          title: "Сонник",
-          tabBarButtonTestID: "tab-dreambook",
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon
-              Icon={DreamTabIcon}
-              color={color}
-              focused={focused}
-              label="Сонник"
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="diary"
-        options={{
-          title: "Профиль",
-          tabBarButtonTestID: "tab-profile",
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon
-              Icon={ProfileTabIcon}
-              color={color}
-              focused={focused}
-              label="Профиль"
-            />
-          ),
-        }}
-      />
-    </Tabs>
+    <View style={styles.root}>
+      <BlurTargetView ref={blurTargetRef} style={styles.root}>
+        <Tabs
+          // `tabBar` is a navigator prop, not a screen option — screenOptions is ignored here.
+          tabBar={(props) => <TabBarBridge {...props} onChange={setLink} />}
+          safeAreaInsets={{ bottom: 0 }}
+          screenOptions={{
+            headerShown: false,
+            tabBarShowLabel: false,
+            tabBarInactiveTintColor: theme.colors.textDim,
+          }}
+        >
+          <Tabs.Screen name="index" options={{ title: "Сегодня" }} />
+          <Tabs.Screen name="gadania" options={{ title: "Гадания" }} />
+          <Tabs.Screen name="meditations" options={{ title: "Медитации" }} />
+          <Tabs.Screen name="dreambook" options={{ title: "Сонник" }} />
+          <Tabs.Screen name="diary" options={{ title: "Профиль" }} />
+        </Tabs>
+      </BlurTargetView>
+      {link ? (
+        <FloatingTabBar
+          state={link.state}
+          navigation={link.navigation}
+          blurTarget={blurTargetRef}
+        />
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   tabBarDock: {
     position: "absolute",
-    left: 16,
-    right: 16,
+    left: 20,
+    right: 20,
   },
   tabBar: {
     height: 70,
-    borderRadius: 28,
+    borderRadius: 30,
     overflow: "visible",
     backgroundColor: "transparent",
     elevation: 0,
     shadowColor: "#05030D",
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.38,
-    shadowRadius: 18,
-    boxShadow: "0px -8px 22px rgba(5, 3, 13, 0.42)",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
   },
-  tabBarClip: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 28,
+  tabBarGlass: {
+    flex: 1,
+    borderRadius: 30,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.13)",
-    backgroundColor: "rgba(20,14,46,0.01)",
+    borderColor: "rgba(214,196,245,0.22)",
     overflow: "hidden",
-    elevation: 0,
   },
   tabBarRow: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    overflow: "visible",
-  },
-  tabBarOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(20,14,46,0.55)",
-  },
-  tabBarTopEdge: {
-    position: "absolute",
-    top: 0,
-    left: 18,
-    right: 18,
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.14)",
+    backgroundColor:
+      Platform.OS === "android" ? "rgba(22,18,38,0.42)" : "rgba(16,13,30,0.48)",
   },
   tabBarItem: {
     flexGrow: 1,
@@ -273,12 +254,9 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     overflow: "visible",
   },
-  activePillFill: {
-    ...StyleSheet.absoluteFillObject,
+  activePillFocused: {
+    marginHorizontal: 6,
     borderRadius: 22,
-    borderWidth: 1,
-    borderColor: theme.colors.archive.rule,
-    backgroundColor: "rgba(201,168,255,0.08)",
     overflow: "hidden",
   },
   iconCircle: {

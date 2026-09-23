@@ -741,7 +741,7 @@ export default function HomeScreen() {
             <View
               style={[
                 styles.topBar,
-                { paddingTop: Math.max(insets.top, 12) },
+                { paddingTop: Math.max(insets.top, 12) + 12 },
               ]}
             >
               <View style={[styles.topBarSide, styles.topBarSideLeft]}>
@@ -842,7 +842,11 @@ export default function HomeScreen() {
                           <Text style={styles.ctaText}>
                             {dailyCardLoading ? "Загрузка…" : "Вытянуть"}
                           </Text>
-                          <ArrowRight color="#FFF7EA" size={18} strokeWidth={1} />
+                          <ArrowRight
+                            color={theme.colors.primaryCtaText}
+                            size={18}
+                            strokeWidth={1}
+                          />
                         </LinearGradient>
                       </Pressable>
                     </Animated.View>
@@ -994,7 +998,11 @@ export default function HomeScreen() {
                         style={styles.ctaGradient}
                       >
                         <Text style={styles.ctaText}>Подробнее</Text>
-                        <ArrowRight color="#FFF7EA" size={18} strokeWidth={1} />
+                        <ArrowRight
+                          color={theme.colors.primaryCtaText}
+                          size={18}
+                          strokeWidth={1}
+                        />
                       </LinearGradient>
                     </Pressable>
                   </View>
@@ -1228,7 +1236,9 @@ export default function HomeScreen() {
                     Узнать значение
                   </Text>
                   <ArrowRight
-                    color={dreamReady ? "#FFF7EA" : "#C9BED6"}
+                    color={
+                      dreamReady ? theme.colors.primaryCtaText : "#C9BED6"
+                    }
                     size={18}
                     strokeWidth={1}
                   />
@@ -1409,7 +1419,7 @@ const styles = StyleSheet.create({
   drawCtaWrap: {
     position: "relative",
     overflow: "visible",
-    shadowColor: "#FFD6EE",
+    shadowColor: "#AD72FA",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.58,
     shadowRadius: 12,
@@ -1425,7 +1435,7 @@ const styles = StyleSheet.create({
   },
   drawCtaAnimatedButton: {
     borderRadius: 999,
-    shadowColor: "#FFD6EE",
+    shadowColor: "#AD72FA",
     shadowOffset: { width: 0, height: 3 },
     elevation: 14,
   },
@@ -1437,7 +1447,7 @@ const styles = StyleSheet.create({
     left: 0,
     borderRadius: 999,
     backgroundColor: "transparent",
-    shadowColor: "#FFD6EE",
+    shadowColor: "#AD72FA",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
     shadowRadius: 20,
@@ -1455,7 +1465,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   ctaText: {
-    color: "#FFF7EA",
+    color: theme.colors.primaryCtaText,
     fontFamily: theme.fonts.bodySemi,
     fontSize: 14,
     lineHeight: 17,

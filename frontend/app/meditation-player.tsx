@@ -242,12 +242,16 @@ function MeditationTransport({
           style={styles.playGrad}
         >
           {status.playing ? (
-            <Pause color={theme.colors.text} size={26} strokeWidth={1.7} />
+            <Pause
+              color={theme.colors.primaryCtaText}
+              size={26}
+              strokeWidth={1.7}
+            />
           ) : !audioReady && !failed && !wasPrepared ? (
             <FillingAudioLoader />
           ) : (
             <Play
-              color={theme.colors.text}
+              color={theme.colors.primaryCtaText}
               size={26}
               strokeWidth={1.7}
               style={styles.playIcon}

@@ -21,7 +21,6 @@ import ScreenHeading from "../components/ScreenHeading";
 import CosmicBackground from "../components/CosmicBackground";
 import GlassCard from "../components/GlassCard";
 import TarotCard from "../components/TarotCard";
-import ProModal from "../components/profile/ProModal";
 import RemainPill from "../components/RemainPill";
 import { TAROT_DECK } from "../data/tarotCards";
 import { cardDetailed, cardShort, cardTitleRu } from "../data/tarotOrientation";
@@ -179,7 +178,6 @@ export default function TarotChatScreen({ historyId }: Props) {
   const [followupsUsed, setFollowupsUsed] = useState(0);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [proVisible, setProVisible] = useState(false);
   const hydratedChatRef = useRef(false);
 
   const remaining = Math.max(0, TAROT_CHAT_MAX_FOLLOWUPS - followupsUsed);
@@ -233,6 +231,11 @@ export default function TarotChatScreen({ historyId }: Props) {
     else router.replace("/(tabs)/gadania?tab=tarot" as never);
   }, [router]);
 
+  const openPro = useCallback(() => {
+    Haptics.selectionAsync().catch(() => {});
+    router.push("/pro" as never);
+  }, [router]);
+
   const scrollToEnd = useCallback(() => {
     requestAnimationFrame(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
@@ -242,7 +245,7 @@ export default function TarotChatScreen({ historyId }: Props) {
   const handleStart = useCallback(async () => {
     if (!item || sending) return;
     if (!canStartNewInterpret) {
-      setProVisible(true);
+      openPro();
       return;
     }
     const trimmed = question.trim();
@@ -308,6 +311,7 @@ export default function TarotChatScreen({ historyId }: Props) {
   }, [
     canStartNewInterpret,
     cards,
+    openPro,
     item,
     persistChat,
     question,
@@ -323,10 +327,7 @@ export default function TarotChatScreen({ historyId }: Props) {
     if (!conversationId) return;
 
     if (remaining <= 0) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(
-        () => {},
-      );
-      setProVisible(true);
+      openPro();
       return;
     }
 
@@ -392,6 +393,7 @@ export default function TarotChatScreen({ historyId }: Props) {
     draft,
     item,
     messages,
+    openPro,
     persistChat,
     question,
     remaining,
@@ -609,7 +611,7 @@ export default function TarotChatScreen({ historyId }: Props) {
 
                   {!canStartNewInterpret ? (
                     <Pressable
-                      onPress={() => setProVisible(true)}
+                      onPress={openPro}
                       style={styles.quotaLock}
                       testID="tarot-chat-quota-lock"
                     >
@@ -624,7 +626,7 @@ export default function TarotChatScreen({ historyId }: Props) {
                     onPress={
                       canStartNewInterpret
                         ? handleStart
-                        : () => setProVisible(true)
+                        : openPro
                     }
                     disabled={sending || (canStartNewInterpret && ctaDisabled)}
                     testID="tarot-chat-start"
@@ -649,10 +651,21 @@ export default function TarotChatScreen({ historyId }: Props) {
                       style={styles.ctaGradient}
                     >
                       {sending ? (
-                        <ActivityIndicator color="#FFF7EA" />
+                        <ActivityIndicator
+                          color={
+                            canStartNewInterpret
+                              ? theme.colors.primaryCtaText
+                              : "#D8CFDF"
+                          }
+                        />
                       ) : (
                         <>
-                          <Text style={styles.ctaText}>
+                          <Text
+                            style={[
+                              styles.ctaText,
+                              !canStartNewInterpret && styles.ctaTextMuted,
+                            ]}
+                          >
                             {canStartNewInterpret
                               ? "Получить толкование"
                               : "Открыть Pro"}
@@ -718,7 +731,7 @@ export default function TarotChatScreen({ historyId }: Props) {
                         <Pressable
                           onPress={() => {
                             Haptics.selectionAsync().catch(() => {});
-                            setProVisible(true);
+                            openPro();
                           }}
                           testID="tarot-chat-pro-cta"
                           style={({ pressed }) => [
@@ -737,7 +750,7 @@ export default function TarotChatScreen({ historyId }: Props) {
                           >
                             <Text style={styles.ctaText}>Оформить Pro</Text>
                             <ArrowRight
-                              color="#FFF7EA"
+                              color={theme.colors.primaryCtaText}
                               size={16}
                               strokeWidth={1.6}
                             />
@@ -793,7 +806,11 @@ export default function TarotChatScreen({ historyId }: Props) {
                     end={{ x: 1, y: 1 }}
                     style={styles.sendGradient}
                   >
-                    <ArrowUp color="#FFF7EA" size={18} strokeWidth={2.4} />
+                    <ArrowUp
+                      color={theme.colors.primaryCtaText}
+                      size={18}
+                      strokeWidth={2.4}
+                    />
                   </LinearGradient>
                 </Pressable>
               </View>
@@ -801,7 +818,6 @@ export default function TarotChatScreen({ historyId }: Props) {
           ) : null}
         </KeyboardAvoidingView>
       </SafeAreaView>
-      <ProModal visible={proVisible} onClose={() => setProVisible(false)} />
     </View>
   );
 }
@@ -986,11 +1002,14 @@ const styles = StyleSheet.create({
     paddingRight: 10,
   },
   ctaText: {
-    color: "#FFF7EA",
+    color: theme.colors.primaryCtaText,
     fontFamily: theme.fonts.bodySemi,
     fontSize: 15,
     letterSpacing: 0.3,
     flexShrink: 1,
+  },
+  ctaTextMuted: {
+    color: "#D8CFDF",
   },
   quotaLock: {
     borderRadius: 16,

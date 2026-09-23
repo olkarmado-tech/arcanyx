@@ -22,7 +22,7 @@
       "package": "com.arcanyx.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#2B28CB"
+        "backgroundColor": "#2F5CE0"
       },
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [

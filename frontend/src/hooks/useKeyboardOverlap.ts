@@ -11,13 +11,25 @@ import {
 } from "react-native";
 
 function overlapFromEvent(event: KeyboardEvent) {
-  const windowBottom = Dimensions.get("window").height;
   const frame = event.endCoordinates;
-  if (frame.screenY > 0) return Math.max(0, windowBottom - frame.screenY);
+  if (frame.screenY > 0) {
+    // Android reports screenY in absolute screen coordinates, while the
+    // "window" height can exclude the status bar. Measure against the screen
+    // there so the overlap is not short by the status bar height.
+    const bottom =
+      Platform.OS === "android"
+        ? Dimensions.get("screen").height
+        : Dimensions.get("window").height;
+    return Math.max(0, bottom - frame.screenY);
+  }
   return Math.max(0, frame.height);
 }
 
-/** How many pixels the keyboard covers. Zero when the window already resized. */
+/**
+ * How many pixels the keyboard covers, measured from the bottom of the screen
+ * (so it includes the navigation bar area on Android). Zero when the window
+ * already resized.
+ */
 export function useKeyboardOverlap(enabled = true) {
   const [overlap, setOverlap] = useState(0);
 

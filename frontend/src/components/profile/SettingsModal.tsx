@@ -15,6 +15,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   Bell,
   ChevronRight,
@@ -30,7 +31,6 @@ import { useUser } from "../../context/UserContext";
 import { theme } from "../../theme";
 import GoldSheetRim from "./GoldSheetRim";
 import LoginModal from "./LoginModal";
-import ProModal from "./ProModal";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const SHEET_RADIUS = 28;
@@ -55,7 +55,6 @@ export default function SettingsModal({ visible, onClose }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const [proVisible, setProVisible] = useState(false);
   const [loginVisible, setLoginVisible] = useState(false);
   const [sheetWidth, setSheetWidth] = useState(0);
   const sheetY = useSharedValue(56);
@@ -85,8 +84,9 @@ export default function SettingsModal({ visible, onClose }: Props) {
   };
 
   const openPro = () => {
+    Haptics.selectionAsync().catch(() => {});
     closeSettings();
-    setProVisible(true);
+    router.push("/pro" as never);
   };
 
   const openLogin = () => {
@@ -226,6 +226,14 @@ export default function SettingsModal({ visible, onClose }: Props) {
                   notificationsEnabled && styles.switchActive,
                 ]}
               >
+                {notificationsEnabled ? (
+                  <LinearGradient
+                    colors={theme.gradients.primaryCta}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                ) : null}
                 <View
                   style={[
                     styles.switchThumb,
@@ -287,7 +295,6 @@ export default function SettingsModal({ visible, onClose }: Props) {
         </View>
       </Modal>
 
-      <ProModal visible={proVisible} onClose={() => setProVisible(false)} />
       <LoginModal visible={loginVisible} onClose={() => setLoginVisible(false)} />
     </>
   );
@@ -403,23 +410,24 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 3,
     justifyContent: "center",
+    overflow: "hidden",
     backgroundColor: "rgba(255,255,255,0.1)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.12)",
   },
   switchActive: {
-    backgroundColor: "rgba(255,215,154,0.28)",
-    borderColor: theme.colors.borderGold,
+    borderColor: "rgba(169,109,248,0.55)",
   },
   switchThumb: {
     width: 21,
     height: 21,
     borderRadius: 11,
     backgroundColor: "rgba(181,174,201,0.85)",
+    zIndex: 1,
   },
   switchThumbActive: {
     alignSelf: "flex-end",
-    backgroundColor: theme.colors.gold,
+    backgroundColor: "rgba(196,190,210,0.95)",
   },
   logoutButton: {
     minHeight: 46,

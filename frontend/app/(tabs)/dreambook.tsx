@@ -219,7 +219,6 @@ export default function DreamBookScreen() {
       <CosmicBackground variant="dream" />
       <SafeAreaView style={styles.segmentSafe} edges={["top"]}>
         <View style={styles.segmentPill}>
-          <View pointerEvents="none" style={styles.segmentBg} />
           <Pressable
             onPress={() => selectTab("interpret")}
             style={({ pressed }) => [
@@ -229,19 +228,24 @@ export default function DreamBookScreen() {
             testID="dreambook-tab-interpret"
           >
             {active === "interpret" ? (
-              <View pointerEvents="none" style={styles.segFill}>
-                <LinearGradient
-                  colors={["rgba(239,160,192,0.45)", "rgba(157,124,230,0.28)"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                />
-              </View>
+              <LinearGradient
+                pointerEvents="none"
+                colors={theme.gradients.softLilac}
+                locations={[0, 0.5, 1]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.segFill}
+              />
             ) : null}
             <BookOpen
-              color={active === "interpret" ? theme.colors.text : theme.colors.textDim}
+              color={
+                active === "interpret"
+                  ? theme.colors.softLilacText
+                  : "rgba(201,196,220,0.78)"
+              }
               size={17}
               strokeWidth={active === "interpret" ? 2 : 1.6}
+              style={styles.segIcon}
             />
             <Text
               numberOfLines={1}
@@ -259,19 +263,24 @@ export default function DreamBookScreen() {
             testID="dreambook-tab-history"
           >
             {active === "history" ? (
-              <View pointerEvents="none" style={styles.segFill}>
-                <LinearGradient
-                  colors={["rgba(239,160,192,0.45)", "rgba(157,124,230,0.28)"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                />
-              </View>
+              <LinearGradient
+                pointerEvents="none"
+                colors={theme.gradients.softLilac}
+                locations={[0, 0.5, 1]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.segFill}
+              />
             ) : null}
             <History
-              color={active === "history" ? theme.colors.text : theme.colors.textDim}
+              color={
+                active === "history"
+                  ? theme.colors.softLilacText
+                  : "rgba(201,196,220,0.78)"
+              }
               size={17}
               strokeWidth={active === "history" ? 2 : 1.6}
+              style={styles.segIcon}
             />
             <Text
               numberOfLines={1}
@@ -444,7 +453,11 @@ export default function DreamBookScreen() {
                         Узнать значение
                       </Text>
                       <ArrowRight
-                        color={ctaDisabled ? "#C9BED6" : "#FFF7EA"}
+                        color={
+                          ctaDisabled
+                            ? "#C9BED6"
+                            : theme.colors.primaryCtaText
+                        }
                         size={18}
                         strokeWidth={2}
                       />
@@ -541,21 +554,18 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: theme.colors.bg },
   segmentSafe: {
     paddingHorizontal: 20,
+    paddingTop: 16,
     paddingBottom: 8,
   },
   segmentPill: {
     flexDirection: "row",
     alignSelf: "stretch",
-    overflow: "visible",
-    padding: 4,
-    gap: 4,
-  },
-  segmentBg: {
-    ...StyleSheet.absoluteFillObject,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: theme.colors.borderStrong,
-    backgroundColor: "rgba(26,23,43,0.72)",
+    borderColor: "rgba(243,237,249,0.16)",
+    backgroundColor: "rgba(18,16,34,0.72)",
+    padding: 4,
+    gap: 2,
     overflow: "hidden",
   },
   segOption: {
@@ -569,23 +579,30 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 9,
     paddingHorizontal: 8,
-    overflow: "visible",
+    borderRadius: 999,
+    overflow: "hidden",
+    position: "relative",
   },
   segFill: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: theme.colors.borderGold,
-    overflow: "hidden",
+  },
+  segIcon: {
+    zIndex: 1,
   },
   segText: {
     fontFamily: theme.fonts.bodySemi,
     fontSize: 12,
     letterSpacing: 0.25,
-    color: theme.colors.textDim,
+    color: "rgba(201,196,220,0.78)",
+    zIndex: 1,
   },
   segTextActive: {
-    color: theme.colors.text,
+    color: theme.colors.softLilacText,
   },
   tabContent: {
     flex: 1,
@@ -780,7 +797,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.bodySemi,
     fontSize: 15,
     letterSpacing: 0.35,
-    color: "#FFF7EA",
+    color: theme.colors.primaryCtaText,
   },
   ctaLabelMuted: { color: "#D8CFDF" },
   errorText: {

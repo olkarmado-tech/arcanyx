@@ -34,6 +34,12 @@ import AppIntro, { INTRO_BG } from "../src/components/AppIntro";
 WebBrowser.maybeCompleteAuthSession();
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+const SWIPE_BACK_OPTIONS = {
+  animation: "slide_from_right" as const,
+  gestureEnabled: true,
+  gestureDirection: "horizontal" as const,
+};
+
 function AppStack() {
   const { hydrated, notificationsEnabled } = useUser();
 
@@ -54,7 +60,22 @@ function AppStack() {
                 contentStyle: { backgroundColor: theme.colors.bg },
                 animation: "fade",
               }}
-            />
+            >
+              <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
+              <Stack.Screen
+                name="meditation-player"
+                options={SWIPE_BACK_OPTIONS}
+              />
+              <Stack.Screen name="draw-card" options={SWIPE_BACK_OPTIONS} />
+              <Stack.Screen name="note-reading" options={SWIPE_BACK_OPTIONS} />
+              <Stack.Screen name="dream-result" options={SWIPE_BACK_OPTIONS} />
+              <Stack.Screen name="oracle-reading" options={SWIPE_BACK_OPTIONS} />
+              <Stack.Screen name="tarot-reading" options={SWIPE_BACK_OPTIONS} />
+              <Stack.Screen name="tarot-chat" options={SWIPE_BACK_OPTIONS} />
+              <Stack.Screen name="pro" options={SWIPE_BACK_OPTIONS} />
+              <Stack.Screen name="pro-plans" options={SWIPE_BACK_OPTIONS} />
+              <Stack.Screen name="support" options={SWIPE_BACK_OPTIONS} />
+            </Stack>
           </DailyCardProvider>
         </MeditationFavoritesProvider>
       </HistoryProvider>

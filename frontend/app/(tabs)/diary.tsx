@@ -45,7 +45,6 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { theme } from "../../src/theme";
 import CosmicBackground from "../../src/components/CosmicBackground";
 import SettingsModal from "../../src/components/profile/SettingsModal";
-import ProModal from "../../src/components/profile/ProModal";
 import LoginModal from "../../src/components/profile/LoginModal";
 import GoldSheetRim from "../../src/components/profile/GoldSheetRim";
 import EditorialMasthead from "../../src/components/EditorialMasthead";
@@ -399,7 +398,6 @@ export default function DiaryScreen() {
   const [filter, setFilter] = useState<DiaryFilter>("all");
   const [isNoteModalVisible, setNoteModalVisible] = useState(false);
   const [isMenuVisible, setMenuVisible] = useState(false);
-  const [isProVisible, setProVisible] = useState(false);
   const [isLoginVisible, setLoginVisible] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [noteSheetWidth, setNoteSheetWidth] = useState(0);
@@ -505,7 +503,7 @@ export default function DiaryScreen() {
 
   const listHeader = (
     <View style={styles.headerArea}>
-      <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 12) }]}>
+      <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 12) + 12 }]}>
         <Pressable
           onPress={openProfileMenu}
           hitSlop={8}
@@ -597,7 +595,7 @@ export default function DiaryScreen() {
                 accessibilityLabel="Изменить имя"
                 style={({ pressed }) => [styles.profileEditNameBtn, pressed && { opacity: 0.78 }]}
               >
-                <Pencil color={theme.colors.textDim} size={16} strokeWidth={1.8} />
+                <Pencil color={theme.colors.textDim} size={20} strokeWidth={1.8} />
               </Pressable>
             ) : (
               <Pressable
@@ -611,7 +609,7 @@ export default function DiaryScreen() {
                 accessibilityLabel="Войти"
                 style={({ pressed }) => [styles.profileEditNameBtn, pressed && { opacity: 0.78 }]}
               >
-                <LogIn color={theme.colors.textDim} size={18} strokeWidth={1.8} />
+                <LogIn color={theme.colors.textDim} size={22} strokeWidth={1.8} />
               </Pressable>
             )}
           </View>
@@ -624,7 +622,7 @@ export default function DiaryScreen() {
           <Pressable
             onPress={() => {
               Haptics.selectionAsync().catch(() => {});
-              setProVisible(true);
+              router.push("/pro" as never);
             }}
             style={({ pressed }) => [styles.proButton, pressed && { opacity: 0.88 }]}
             testID="profile-pro-btn"
@@ -637,7 +635,11 @@ export default function DiaryScreen() {
               end={{ x: 1, y: 1 }}
               style={styles.proButtonGradient}
             >
-              <Crown color="#FFF7EA" size={16} strokeWidth={1.8} />
+              <Crown
+                color={theme.colors.primaryCtaText}
+                size={16}
+                strokeWidth={1.8}
+              />
               <Text style={styles.proButtonText}>Перейти на Pro</Text>
             </LinearGradient>
           </Pressable>
@@ -664,11 +666,7 @@ export default function DiaryScreen() {
         </Pressable>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filtersScroll}
-      >
+      <View style={styles.filtersTrack}>
         {FILTERS.map((f) => {
           const active = filter === f.id;
           return (
@@ -677,31 +675,32 @@ export default function DiaryScreen() {
               onPress={() => selectFilter(f.id)}
               testID={`diary-filter-${f.id}`}
               style={({ pressed }) => [
-                styles.filterPill,
-                active && styles.filterPillActive,
-                pressed && { opacity: 0.8 },
+                styles.filterSegment,
+                pressed && { opacity: 0.88 },
               ]}
             >
               {active ? (
                 <LinearGradient
-                  colors={["rgba(239,160,192,0.45)", "rgba(157,124,230,0.28)"]}
+                  colors={theme.gradients.softLilac}
+                  locations={[0, 0.5, 1]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={StyleSheet.absoluteFill}
                 />
               ) : null}
-              <Text style={[styles.filterLabel, active && styles.filterLabelActive]}>
-                {f.label}
+              <Text
+                style={[
+                  styles.filterLabel,
+                  active && styles.filterLabelActive,
+                ]}
+                numberOfLines={1}
+              >
+                {f.label} {f.count}
               </Text>
-              <View style={[styles.filterBadge, active && styles.filterBadgeActive]}>
-                <Text style={[styles.filterBadgeText, active && styles.filterBadgeTextActive]}>
-                  {f.count}
-                </Text>
-              </View>
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
     </View>
   );
 
@@ -757,7 +756,11 @@ export default function DiaryScreen() {
             style={styles.emptyCtaGradient}
           >
             <Text style={styles.emptyCtaText}>К гаданиям</Text>
-            <ChevronRight color="#FFF7EA" size={16} strokeWidth={1.8} />
+            <ChevronRight
+              color={theme.colors.primaryCtaText}
+              size={16}
+              strokeWidth={1.8}
+            />
           </LinearGradient>
         </Pressable>
       ) : null}
@@ -836,7 +839,13 @@ export default function DiaryScreen() {
             accessibilityLabel="Закрыть окно заметки"
           />
           <View
-            style={[styles.modalContent, { maxHeight: noteSheetMaxHeight }]}
+            style={[
+              styles.modalContent,
+              {
+                maxHeight: noteSheetMaxHeight,
+                paddingBottom: 24 + (noteKeyboard > 0 ? 12 : insets.bottom),
+              },
+            ]}
             onLayout={(event) => setNoteSheetWidth(event.nativeEvent.layout.width)}
           >
             <GoldSheetRim
@@ -859,18 +868,19 @@ export default function DiaryScreen() {
               keyboardShouldPersistTaps="handled"
               bounces={false}
               showsVerticalScrollIndicator={false}
-              style={{ maxHeight: Math.max(160, noteSheetMaxHeight - 120) }}
+              style={{ flexGrow: 0, flexShrink: 1, maxHeight: Math.max(120, noteSheetMaxHeight - 200) }}
             >
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Что у вас на душе?"
-              placeholderTextColor={theme.colors.textMuted}
-              value={noteText}
-              onChangeText={setNoteText}
-              multiline
-              autoFocus
-              textAlignVertical="top"
-            />
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Что у вас на душе?"
+                placeholderTextColor={theme.colors.textMuted}
+                value={noteText}
+                onChangeText={setNoteText}
+                multiline
+                autoFocus
+                textAlignVertical="top"
+              />
+            </ScrollView>
 
             <Pressable
               style={({ pressed }) => [
@@ -892,13 +902,11 @@ export default function DiaryScreen() {
                 </Text>
               </LinearGradient>
             </Pressable>
-            </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
 
       <SettingsModal visible={isMenuVisible} onClose={() => setMenuVisible(false)} />
-      <ProModal visible={isProVisible} onClose={() => setProVisible(false)} />
       <LoginModal visible={isLoginVisible} onClose={() => setLoginVisible(false)} />
     </View>
   );
@@ -984,9 +992,9 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   profileEditNameBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1045,7 +1053,7 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
   },
   proButtonText: {
-    color: "#FFF7EA",
+    color: theme.colors.primaryCtaText,
     fontFamily: theme.fonts.bodySemi,
     fontSize: 14,
   },
@@ -1073,50 +1081,39 @@ const styles = StyleSheet.create({
   },
 
   /* Filters */
-  filtersScroll: {
-    paddingHorizontal: 20,
-    gap: 10,
-  },
-  filterPill: {
+  filtersTrack: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8,
-    paddingLeft: 16,
-    paddingRight: 10,
+    marginHorizontal: 20,
+    padding: 4,
+    gap: 2,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: theme.colors.borderStrong,
-    backgroundColor: "rgba(26,23,43,0.65)",
+    borderColor: "rgba(243,237,249,0.16)",
+    backgroundColor: "rgba(18,16,34,0.72)",
     overflow: "hidden",
   },
-  filterPillActive: {
-    borderColor: theme.colors.borderGold,
+  filterSegment: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 9,
+    paddingHorizontal: 6,
+    borderRadius: 999,
+    overflow: "hidden",
   },
   filterLabel: {
     fontFamily: theme.fonts.bodySemi,
     fontSize: 13,
-    color: theme.colors.textDim,
-    marginRight: 8,
+    lineHeight: 16,
+    color: "rgba(201,196,220,0.78)",
+    textAlign: "center",
   },
   filterLabelActive: {
-    color: theme.colors.text,
-  },
-  filterBadge: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 12,
-  },
-  filterBadgeActive: {
-    backgroundColor: "rgba(26,23,43,0.4)",
-  },
-  filterBadgeText: {
-    fontFamily: theme.fonts.bodySemi,
-    fontSize: 11,
-    color: theme.colors.textDim,
-  },
-  filterBadgeTextActive: {
-    color: theme.colors.text,
+    color: theme.colors.softLilacText,
   },
 
   /* Timeline List */
@@ -1393,7 +1390,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   emptyCtaText: {
-    color: "#FFF7EA",
+    color: theme.colors.primaryCtaText,
     fontFamily: theme.fonts.bodySemi,
     fontSize: 14,
     letterSpacing: 0.3,
@@ -1455,7 +1452,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   modalSaveText: {
-    color: "#FFF",
+    color: theme.colors.primaryCtaText,
     fontFamily: theme.fonts.bodySemi,
     fontSize: 16,
     letterSpacing: 0.5,

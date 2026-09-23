@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
@@ -41,7 +41,10 @@ export default function NoteReadingScreen() {
   const { items, updateItem } = useHistory();
   const [isEditing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  const insets = useSafeAreaInsets();
   const noteKeyboard = useKeyboardOverlap(isEditing);
+  // The SafeAreaView already pads the bottom inset; only lift by the remainder.
+  const keyboardLift = Math.max(0, noteKeyboard - insets.bottom);
 
   const note = useMemo(
     () => items.find((item) => item.id === noteId && item.type === "note") ?? null,
@@ -96,7 +99,7 @@ export default function NoteReadingScreen() {
         pointerEvents="none"
       />
       <LinearGradient
-        colors={[theme.colors.bg, "rgba(18,16,34,0.7)", "rgba(18,16,34,0.28)"]}
+        colors={["rgba(12,11,17,0.96)", "rgba(12,11,17,0.7)", "rgba(12,11,17,0.28)"]}
         locations={[0, 0.38, 1]}
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}
@@ -110,8 +113,8 @@ export default function NoteReadingScreen() {
         pointerEvents="none"
       />
       <LinearGradient
-        colors={["rgba(18,16,34,0.12)", "rgba(18,16,34,0.62)", theme.colors.bg]}
-        locations={[0, 0.58, 1]}
+        colors={["rgba(12,11,17,0.12)", "rgba(12,11,17,0.62)", "#0C0B11"]}
+        locations={[0, 0.52, 1]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={{
@@ -155,7 +158,7 @@ export default function NoteReadingScreen() {
         </View>
 
         <KeyboardAvoidingView
-          style={[styles.content, isEditing && noteKeyboard > 0 && { paddingBottom: noteKeyboard }]}
+          style={[styles.content, isEditing && keyboardLift > 0 && { paddingBottom: keyboardLift }]}
           behavior={undefined}
         >
           {!note ? (
@@ -199,7 +202,11 @@ export default function NoteReadingScreen() {
                       end={{ x: 1, y: 0 }}
                       style={styles.saveGradient}
                     >
-                      <Check color="#FFF7EA" size={17} strokeWidth={2} />
+                      <Check
+                        color={theme.colors.primaryCtaText}
+                        size={17}
+                        strokeWidth={2}
+                      />
                       <Text style={styles.saveText}>Сохранить</Text>
                     </LinearGradient>
                   </Pressable>
@@ -329,7 +336,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   saveText: {
-    color: "#FFF7EA",
+    color: theme.colors.primaryCtaText,
     fontFamily: theme.fonts.bodySemi,
     fontSize: 13,
   },

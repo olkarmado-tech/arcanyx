@@ -52,17 +52,18 @@ const BALL_ASPECT_RATIO = 1086 / 1700;
 
 /**
  * Изображение уже содержит нужное пустое пространство над шаром.
- * Увеличение слоя здесь обрезает это пространство и визуально поднимает шар.
+ * Положительный nudge удлиняет слой вниз (лишнее клипится сверху) и поднимает шар.
+ * Отрицательный — сдвигает картинку вниз, оставляя больше неба под заголовком.
  */
-const ORACLE_BALL_VERTICAL_NUDGE = 0;
+const ORACLE_BALL_VERTICAL_NUDGE = -0.055;
 /** Компактность полосы с шаром: меньше — меньше высота героя (больше места под форму). */
-const ORACLE_HERO_HEIGHT_FRAC = 0.82;
+const ORACLE_HERO_HEIGHT_FRAC = 0.84;
 const ORACLE_HERO_MAX_SCREEN_FRAC = 0.65;
 const ORACLE_HERO_MAX_EMBEDDED_FRAC = 0.58;
 /** Круговая зона long-press на шаре: доля ширины экрана и героя; ↑ = крупнее hit-target. */
 const ORACLE_BALL_HIT_SIZE_FRAC_W = 0.76;
 const ORACLE_BALL_HIT_MAX_FRAC_HERO_H = 0.52;
-const ORACLE_BALL_HIT_BOTTOM_FRAC = 0.28;
+const ORACLE_BALL_HIT_BOTTOM_FRAC = 0.22;
 const ORACLE_BALL_LONG_PRESS_MS = 450;
 
 const ORACLE_SOURCE_BACKGROUNDS: Record<OracleSource, number> = {
@@ -285,6 +286,8 @@ export default function OracleScreen({
     screenH * heroMaxFrac,
   );
   const heroImageNudgeY = screenW * ORACLE_BALL_VERTICAL_NUDGE;
+  const heroImageOffsetY = Math.max(0, -heroImageNudgeY);
+  const heroImageHeight = heroHeight + Math.max(0, heroImageNudgeY);
 
   const { items, hydrated } = useHistory();
   const appliedArchiveRef = useRef(false);
@@ -414,7 +417,7 @@ export default function OracleScreen({
   const ballHitBottom = heroHeight * ORACLE_BALL_HIT_BOTTOM_FRAC;
   const mistOrbSize = ballHitSize * 1.35;
   const mistOrbLeft = (ballHitSize - mistOrbSize) / 2;
-  const mistOrbTop = (ballHitSize - mistOrbSize) / 2 + 8;
+  const mistOrbTop = (ballHitSize - mistOrbSize) / 2 + 12;
 
   const onBallLongPress = () => {
     if (historyId) return;
@@ -511,11 +514,14 @@ export default function OracleScreen({
               scrollEventThrottle={16}
             >
               <View style={[styles.hero, { height: heroHeight }]}>
-                {/* Слой выше героя на nudge: прижат снизу — шар ниже в кадре без пустой полосы сверху */}
+                {/* Слой картинки: положительный nudge поднимает шар, отрицательный — опускает. */}
                 <Animated.View
                   style={[
                     styles.heroImageLayerAnchored,
-                    { height: heroHeight + heroImageNudgeY },
+                    {
+                      height: heroImageHeight,
+                      transform: [{ translateY: heroImageOffsetY }],
+                    },
                   ]}
                 >
                   <Image
@@ -548,24 +554,30 @@ export default function OracleScreen({
                 <LinearGradient
                   colors={[
                     "rgba(18,16,34,0)",
-                    "rgba(18,16,34,0.18)",
-                    theme.colors.bg,
+                    "rgba(18,16,34,0.22)",
+                    "rgba(12,11,17,0.78)",
+                    "#0C0B11",
                   ]}
-                  locations={[0, 0.45, 1]}
+                  locations={[0, 0.22, 0.58, 1]}
                   style={styles.heroFade}
                   pointerEvents="none"
                 />
                 
                 <LinearGradient
-                  colors={[theme.colors.bg, "rgba(18,16,34,0)"]}
-                  locations={[0, 1]}
+                  colors={[
+                    theme.colors.bg,
+                    "rgba(18,16,34,0.82)",
+                    "rgba(18,16,34,0.28)",
+                    "rgba(18,16,34,0)",
+                  ]}
+                  locations={[0, 0.38, 0.72, 1]}
                   style={styles.heroTopFade}
                   pointerEvents="none"
                 />
 
                 <ScreenHeading
                   title="Спроси Оракула"
-                  deck='Задайте вопрос, на который можно ответить «да» или «нет»'
+                  deck={'Задайте вопрос, на который можно\nответить «да» или «нет»'}
                   style={styles.heroCopy}
                 />
 
@@ -637,6 +649,13 @@ export default function OracleScreen({
                 )}
               </View>
 
+              <LinearGradient
+                colors={["#0C0B11", "rgba(12,11,17,0)"]}
+                locations={[0, 1]}
+                style={styles.heroFadeTail}
+                pointerEvents="none"
+              />
+
               <View style={styles.content}>
                 <View ref={questionBlockRef} collapsable={false}>
                 <GlassCard
@@ -698,7 +717,11 @@ export default function OracleScreen({
                     style={styles.askButtonGradient}
                   >
                     <Sparkles
-                      color={phase === "loading" ? "#C9BED6" : "#FFF7EA"}
+                      color={
+                        phase === "loading"
+                          ? "#C9BED6"
+                          : theme.colors.primaryCtaText
+                      }
                       size={phase === "loading" ? 14 : 18}
                       strokeWidth={1.8}
                     />
@@ -906,21 +929,26 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: 140,
+    height: 230,
+  },
+  heroFadeTail: {
+    height: 64,
+    marginBottom: -64,
+    zIndex: 1,
   },
   heroTopFade: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    height: 220,
+    height: 168,
   },
   heroCopy: {
     paddingHorizontal: 24,
     paddingTop: 0,
+    paddingBottom: 0,
     alignItems: "center",
     zIndex: 10,
-    transform: [{ translateY: -6 }],
   },
   eyebrow: {
     fontFamily: theme.fonts.bodyMedium,
@@ -1124,19 +1152,22 @@ const styles = StyleSheet.create({
   },
   askButton: {
     borderRadius: theme.radius.pill,
-    backgroundColor: "#EFA0C0",
-    ...theme.shadows.ctaPrimary,
-    shadowColor: "#F7B7D6",
-    shadowOpacity: 0.62,
-    shadowRadius: 18,
+    backgroundColor: "#A77CEC",
+    shadowColor: "#AD72FA",
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 18,
+    elevation: 6,
     marginTop: 2,
     alignSelf: "center",
     width: "82%",
   },
   askButtonMuted: {
-    ...theme.shadows.ctaMuted,
+    shadowColor: "#756A8F",
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
   },
   askButtonGradient: {
     minHeight: 56,
@@ -1150,7 +1181,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   askButtonText: {
-    color: "#FFF7EA",
+    color: theme.colors.primaryCtaText,
     fontFamily: theme.fonts.bodySemi,
     fontSize: 15,
     letterSpacing: 0.4,

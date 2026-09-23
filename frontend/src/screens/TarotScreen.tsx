@@ -79,7 +79,6 @@ import {
 } from "../context/HistoryContext";
 import { useUser } from "../context/UserContext";
 import { useTarotSpreads } from "../context/TarotSpreadsContext";
-import ProModal from "../components/profile/ProModal";
 import RemainPill from "../components/RemainPill";
 import ShareSpreadPoster from "../components/ShareSpreadPoster";
 import { SHARE_POSTER_H, SHARE_POSTER_W } from "../components/ShareCardPoster";
@@ -316,7 +315,6 @@ export default function TarotScreen({
   const { addItem, updateItem, items, hydrated } = useHistory();
   const { isPro } = useUser();
   const { spreads, getSpreadById } = useTarotSpreads();
-  const [proVisible, setProVisible] = useState(false);
   const revealTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const appliedArchiveRef = useRef(false);
   const [historyItemId, setHistoryItemId] = useState<string | null>(
@@ -1152,7 +1150,7 @@ export default function TarotScreen({
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(
         () => {},
       );
-      setProVisible(true);
+      router.push("/pro" as never);
       return;
     }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
@@ -1722,10 +1720,28 @@ export default function TarotScreen({
                   style={styles.aiCtaGradient}
                 >
                   <View style={styles.aiCtaMain}>
-                    <Text style={styles.aiCtaText}>
+                    <Text
+                      style={[
+                        styles.aiCtaText,
+                        !chatStarted &&
+                          !interpretQuota.unlimited &&
+                          interpretQuota.remaining === 0 &&
+                          styles.aiCtaTextMuted,
+                      ]}
+                    >
                       {chatStarted ? "Продолжить диалог" : "Истолковать"}
                     </Text>
-                    <ArrowRight color="#FFF7EA" size={18} strokeWidth={1.2} />
+                    <ArrowRight
+                      color={
+                        !chatStarted &&
+                        !interpretQuota.unlimited &&
+                        interpretQuota.remaining === 0
+                          ? "#D8CFDF"
+                          : theme.colors.primaryCtaText
+                      }
+                      size={18}
+                      strokeWidth={1.2}
+                    />
                   </View>
                   {!chatStarted && !interpretQuota.unlimited ? (
                     <RemainPill remaining={interpretQuota.remaining} />
@@ -2025,7 +2041,6 @@ export default function TarotScreen({
           ) : null}
         </View>
       </Modal>
-      <ProModal visible={proVisible} onClose={() => setProVisible(false)} />
     </View>
   );
 }
@@ -2710,11 +2725,14 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   aiCtaText: {
-    color: "#FFF7EA",
+    color: theme.colors.primaryCtaText,
     fontFamily: theme.fonts.bodySemi,
     fontSize: 15,
     lineHeight: 18,
     letterSpacing: 0.5,
+  },
+  aiCtaTextMuted: {
+    color: "#D8CFDF",
   },
   previewRoot: {
     flex: 1,

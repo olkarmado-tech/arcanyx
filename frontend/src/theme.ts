@@ -27,6 +27,9 @@ export const theme = {
     textDim: "#B5AEC9",
     textMuted: "#7C7696",
     ink: "#151226",
+    primaryCtaText: "#110D20",
+    /** Текст на бледно-сиреневых чипах (фильтры, таббар). */
+    softLilacText: "#21152F",
     success: "#10B981",
     danger: "#EF4444",
     /**
@@ -51,9 +54,11 @@ export const theme = {
     warm: ["#FFD79A", "#EFA0C0"],
     oracle: ["#33245E", "#7B4CC2", "#EFA0C0"],
     cardBack: ["#33285C", "#1B1830", "#121022"],
-    /** Главные CTA (главная, оракул): розово‑лавандовый тройной градиент. */
-    primaryCta: ["#EFA0C0", "#B98BE5", "#9D7CE6"] as [string, string, string],
-    primaryCtaMuted: ["#756A8F", "#7D7494", "#847888"] as [string, string, string],
+    /** Главные CTA: яркий фиолетовый градиент Pro. */
+    primaryCta: ["#C978F4", "#A96DF8", "#8E6BFA"] as [string, string, string],
+    primaryCtaMuted: ["#70647F", "#766985", "#776B88"] as [string, string, string],
+    /** Бледно-сиреневый акцент для фильтров и активного таба. */
+    softLilac: ["#D4C6F3", "#C4B2EB", "#B29ADB"] as [string, string, string],
   },
   radius: {
     sm: 12,
@@ -121,12 +126,12 @@ export const theme = {
       shadowRadius: 20,
       elevation: 10,
     },
-    /** Свечение розово‑лавандовое вокруг основных CTA (главная, оракул). */
+    /** Мягкое фиолетовое свечение вокруг основных CTA. */
     ctaPrimary: {
-      shadowColor: "#F5B8D4",
+      shadowColor: "#AD72FA",
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.52,
-      shadowRadius: 8,
+      shadowOpacity: 0.38,
+      shadowRadius: 12,
       elevation: 8,
     },
     /** Приглушённое свечение — заблокированный CTA / loading оракула. */

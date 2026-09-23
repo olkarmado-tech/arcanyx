@@ -13,6 +13,8 @@ import { useTarotSpreads } from "../../src/context/TarotSpreadsContext";
 
 const ICON_CARD = require("../../assets/icons/icon-card2.png");
 const ICON_ORACLE = require("../../assets/icons/icon-oracle.png");
+/** Совпадает с CosmicBackground / Oracle scene floor. */
+const ORACLE_TOP = "#0C0B11";
 
 type GadanieTab = "oracle" | "tarot";
 
@@ -51,11 +53,22 @@ export default function GadaniaScreen() {
   };
 
   return (
-    <View style={styles.root} testID="gadania-root">
+    <View
+      style={[
+        styles.root,
+        active === "oracle" ? styles.rootOracle : styles.rootTarot,
+      ]}
+      testID="gadania-root"
+    >
       {active === "tarot" ? <CosmicBackground variant="tarot" /> : null}
-      <SafeAreaView edges={["top"]} style={styles.segmentSafe}>
+      <SafeAreaView
+        edges={["top"]}
+        style={[
+          styles.segmentSafe,
+          active === "oracle" && styles.segmentSafeOracle,
+        ]}
+      >
         <View style={styles.segmentPill}>
-          <View pointerEvents="none" style={styles.segmentBg} />
           <Pressable
             onPress={() => select("oracle")}
             style={({ pressed }) => [
@@ -65,23 +78,23 @@ export default function GadaniaScreen() {
             testID="gadania-tab-oracle"
           >
             {active === "oracle" ? (
-              <View pointerEvents="none" style={styles.segFill}>
-                <LinearGradient
-                  colors={["rgba(239,160,192,0.45)", "rgba(157,124,230,0.28)"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                />
-              </View>
+              <LinearGradient
+                pointerEvents="none"
+                colors={theme.gradients.softLilac}
+                locations={[0, 0.5, 1]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.segFill}
+              />
             ) : null}
             <Image
               source={ICON_ORACLE}
-              style={{
-                width: 26,
-                height: 26,
-                marginRight: 4,
-              }}
-              tintColor={active === "oracle" ? theme.colors.text : theme.colors.textDim}
+              style={styles.segIconOracle}
+              tintColor={
+                active === "oracle"
+                  ? theme.colors.softLilacText
+                  : "rgba(201,196,220,0.78)"
+              }
               contentFit="contain"
             />
             <Text
@@ -103,23 +116,23 @@ export default function GadaniaScreen() {
             testID="gadania-tab-tarot"
           >
             {active === "tarot" ? (
-              <View pointerEvents="none" style={styles.segFill}>
-                <LinearGradient
-                  colors={["rgba(239,160,192,0.45)", "rgba(157,124,230,0.28)"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFill}
-                />
-              </View>
+              <LinearGradient
+                pointerEvents="none"
+                colors={theme.gradients.softLilac}
+                locations={[0, 0.5, 1]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.segFill}
+              />
             ) : null}
             <Image
               source={ICON_CARD}
-              style={{
-                width: 32,
-                height: 32,
-                marginRight: 4,
-              }}
-              tintColor={active === "tarot" ? theme.colors.text : theme.colors.textDim}
+              style={styles.segIconTarot}
+              tintColor={
+                active === "tarot"
+                  ? theme.colors.softLilacText
+                  : "rgba(201,196,220,0.78)"
+              }
               contentFit="contain"
             />
             <Text
@@ -156,6 +169,11 @@ export default function GadaniaScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+  },
+  rootOracle: {
+    backgroundColor: ORACLE_TOP,
+  },
+  rootTarot: {
     backgroundColor: theme.colors.bg,
   },
   content: {
@@ -169,23 +187,22 @@ const styles = StyleSheet.create({
   },
   segmentSafe: {
     paddingHorizontal: 20,
-    paddingTop: 4,
+    paddingTop: 16,
     paddingBottom: 6,
     alignItems: "center",
+  },
+  segmentSafeOracle: {
+    backgroundColor: ORACLE_TOP,
   },
   segmentPill: {
     flexDirection: "row",
     alignSelf: "center",
-    overflow: "visible",
-    padding: 4,
-    gap: 4,
-  },
-  segmentBg: {
-    ...StyleSheet.absoluteFillObject,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: theme.colors.borderStrong,
-    backgroundColor: "rgba(26,23,43,0.72)",
+    borderColor: "rgba(243,237,249,0.16)",
+    backgroundColor: "rgba(18,16,34,0.72)",
+    padding: 4,
+    gap: 2,
     overflow: "hidden",
   },
   segOption: {
@@ -195,22 +212,39 @@ const styles = StyleSheet.create({
     gap: 7,
     paddingVertical: 9,
     paddingHorizontal: 16,
-    overflow: "visible",
+    borderRadius: 999,
+    minWidth: 118,
+    overflow: "hidden",
+    position: "relative",
   },
   segFill: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: theme.colors.borderGold,
-    overflow: "hidden",
+  },
+  segIconOracle: {
+    width: 26,
+    height: 26,
+    marginRight: 4,
+    zIndex: 1,
+  },
+  segIconTarot: {
+    width: 32,
+    height: 32,
+    marginRight: 4,
+    zIndex: 1,
   },
   segText: {
     fontFamily: theme.fonts.bodySemi,
     fontSize: 13,
     letterSpacing: 0.35,
-    color: theme.colors.textDim,
+    color: "rgba(201,196,220,0.78)",
+    zIndex: 1,
   },
   segTextActive: {
-    color: theme.colors.text,
+    color: theme.colors.softLilacText,
   },
 });
