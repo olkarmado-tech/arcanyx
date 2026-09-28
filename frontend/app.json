@@ -3,7 +3,7 @@
     "name": "Arcanyx",
     "slug": "arcanyx",
     "owner": "karmadoleg",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "frontend",
@@ -20,6 +20,7 @@
     },
     "android": {
       "package": "com.arcanyx.app",
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#2F5CE0"
@@ -71,7 +72,8 @@
         }
       ],
       "expo-sharing",
-      "./plugins/withRuStorePay"
+      "./plugins/withRuStorePay",
+      "./plugins/withAppMetrica"
     ],
     "experiments": {
       "typedRoutes": true
@@ -89,6 +91,9 @@
           "half": "arcanyx_pro_6m",
           "year": "arcanyx_pro_year"
         }
+      },
+      "appmetrica": {
+        "apiKey": "f90f8cc0-1c2e-464e-9399-be857c881ec4"
       }
     }
   }

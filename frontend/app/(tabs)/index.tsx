@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   AppState,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -711,12 +710,13 @@ export default function HomeScreen() {
   const dreamReady =
     !dreamInterpretLoading && (dreamLocked || dreamText.trim().length > 0);
 
+  if (dreamInterpretLoading) {
+    return <DreamInterpretLoadingScreen />;
+  }
+
   return (
     <View style={styles.root}>
       <CosmicBackground />
-      <Modal visible={dreamInterpretLoading} animationType="fade" statusBarTranslucent>
-        <DreamInterpretLoadingScreen />
-      </Modal>
       <SafeAreaView style={styles.safe} edges={[]}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={undefined}>
           <ScrollView

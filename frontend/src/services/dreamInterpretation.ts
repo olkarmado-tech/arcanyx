@@ -65,6 +65,41 @@ function formatInterpretErrorBody(body: unknown): string {
   }
 }
 
+function isConnectionReset(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  const cause =
+    err instanceof Error && "cause" in err ? String((err as { cause?: unknown }).cause ?? "") : "";
+  return /connection reset|fetch failed|network request failed|socket|failed to connect/i.test(
+    `${message} ${cause}`,
+  );
+}
+
+async function postDreamInterpret(body: string): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await fetch(`${apiBaseUrl()}/api/dreams/interpret`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body,
+      });
+    } catch (err) {
+      lastError = err;
+      if (attempt === 0 && isConnectionReset(err)) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        continue;
+      }
+      break;
+    }
+  }
+  if (isConnectionReset(lastError)) {
+    throw new Error("Не удалось связаться с сервером. Проверьте интернет и попробуйте ещё раз.");
+  }
+  throw lastError instanceof Error ? lastError : new Error("Не удалось получить толкование.");
+}
+
 export async function interpretDream(
   input: DreamInterpretRequest,
 ): Promise<DreamInterpretResponse> {
@@ -73,13 +108,7 @@ export async function interpretDream(
     throw new Error("Введите описание сна.");
   }
 
-  const res = await fetch(`${apiBaseUrl()}/api/dreams/interpret`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+  const res = await postDreamInterpret(JSON.stringify(payload));
 
   if (!res.ok) {
     let detail = "";
