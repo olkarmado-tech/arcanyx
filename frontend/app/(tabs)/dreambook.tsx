@@ -45,7 +45,14 @@ import DreamHistoryScreen from "../../src/screens/DreamHistoryScreen";
 import DreamInterpretLoadingScreen from "../../src/screens/DreamInterpretLoadingScreen";
 import { useRemountOnTabFocus } from "../../src/hooks/useRemountOnTabFocus";
 import { useScrollAboveKeyboard } from "../../src/hooks/useKeyboardOverlap";
+import ProCrown from "../../src/components/ProCrown";
 import { useHistory } from "../../src/context/HistoryContext";
+import { useUser } from "../../src/context/UserContext";
+import {
+  FREE_DREAM_INTERPRET_LIMIT,
+  canInterpretDream,
+  dreamInterpretationsRemaining,
+} from "../../src/entitlements/access";
 import { useDreamDictation } from "../../src/hooks/useDreamDictation";
 import {
   DREAM_TEXT_MAX_LENGTH,
@@ -76,6 +83,8 @@ type DreamBookTab = "interpret" | "history";
 export default function DreamBookScreen() {
   const router = useRouter();
   const { addItem, items, updateItem } = useHistory();
+  const { isPro } = useUser();
+  const dreamsLeft = dreamInterpretationsRemaining(isPro, items);
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const { width: windowWidth } = useWindowDimensions();
   const [text, setText] = useState("");
@@ -170,11 +179,17 @@ export default function DreamBookScreen() {
   );
 
   const trimmedLen = text.trim().length;
-  const ctaDisabled = trimmedLen === 0 || isLoading;
+  const dreamLocked = !canInterpretDream(isPro, items);
+  const ctaDisabled = isLoading || (!dreamLocked && trimmedLen === 0);
 
   const handleInterpret = useCallback(async () => {
+    if (isLoading) return;
+    if (!canInterpretDream(isPro, items)) {
+      router.push("/pro" as never);
+      return;
+    }
     const dreamText = text.trim();
-    if (!dreamText || isLoading) return;
+    if (!dreamText) return;
 
     setError(null);
     setIsLoading(true);
@@ -208,7 +223,7 @@ export default function DreamBookScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [addItem, isLoading, router, text, updateItem]);
+  }, [addItem, isLoading, isPro, items, router, text, updateItem]);
 
   if (isLoading) {
     return <DreamInterpretLoadingScreen />;
@@ -449,6 +464,7 @@ export default function DreamBookScreen() {
                       end={{ x: 1, y: 0 }}
                       style={styles.ctaGrad}
                     >
+                      {dreamsLeft === 0 ? <ProCrown /> : null}
                       <Text style={[styles.ctaLabel, ctaDisabled && styles.ctaLabelMuted]}>
                         Узнать значение
                       </Text>
@@ -463,6 +479,13 @@ export default function DreamBookScreen() {
                       />
                     </LinearGradient>
                   </Pressable>
+                  {!isPro ? (
+                    <Text style={styles.quotaText}>
+                      {dreamsLeft > 0
+                        ? `Бесплатно: ${dreamsLeft} из ${FREE_DREAM_INTERPRET_LIMIT}`
+                        : "Бесплатные толкования закончились"}
+                    </Text>
+                  ) : null}
 
                   {error ? <Text style={styles.errorText}>{error}</Text> : null}
                 </View>
@@ -800,6 +823,14 @@ const styles = StyleSheet.create({
     color: theme.colors.primaryCtaText,
   },
   ctaLabelMuted: { color: "#D8CFDF" },
+  quotaText: {
+    marginTop: 10,
+    color: "#C9C2D8",
+    fontFamily: theme.fonts.body,
+    fontSize: 12,
+    lineHeight: 16,
+    textAlign: "center",
+  },
   errorText: {
     marginTop: 10,
     color: "#F4B2C0",

@@ -35,6 +35,7 @@ import { useScrollAboveKeyboard } from "../hooks/useKeyboardOverlap";
 import ScreenHeading from "../components/ScreenHeading";
 import CosmicBackground from "../components/CosmicBackground";
 import GlassCard from "../components/GlassCard";
+import ProCrown from "../components/ProCrown";
 import {
   CATEGORY_META,
   ORACLE_SOURCE_META,
@@ -44,6 +45,8 @@ import {
   OracleSource,
 } from "../data/oracleAnswers";
 import { useHistory } from "../context/HistoryContext";
+import { useUser } from "../context/UserContext";
+import { isOracleSourceFree } from "../entitlements/access";
 
 type Phase = "idle" | "loading" | "result";
 
@@ -276,6 +279,7 @@ export default function OracleScreen({
   historyId,
 }: OracleScreenProps) {
   const router = useRouter();
+  const { isPro } = useUser();
   const { width: screenW, height: screenH } = Dimensions.get("window");
   const heroNatural = screenW / BALL_ASPECT_RATIO;
   const heroMaxFrac = embedded
@@ -374,6 +378,10 @@ export default function OracleScreen({
 
   const askUniverse = () => {
     if (phase === "loading") return;
+    if (!isOracleSourceFree(isPro, selectedSource)) {
+      router.push("/pro" as never);
+      return;
+    }
     Keyboard.dismiss();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
     setPhase("loading");
@@ -753,6 +761,11 @@ export default function OracleScreen({
                         key={source.id}
                         disabled={!formUnlocked}
                         onPress={() => {
+                          if (!isOracleSourceFree(isPro, source.id)) {
+                            Haptics.selectionAsync().catch(() => {});
+                            router.push("/pro" as never);
+                            return;
+                          }
                           setSelectedSource(source.id);
                           Haptics.selectionAsync().catch(() => {});
                         }}
@@ -821,6 +834,9 @@ export default function OracleScreen({
                             </Text>
                           </LinearGradient>
                         </View>
+                        {!isOracleSourceFree(isPro, source.id) ? (
+                          <ProCrown style={styles.sourceProBadge} />
+                        ) : null}
                       </Pressable>
                     );
                   })}
@@ -1058,6 +1074,12 @@ const styles = StyleSheet.create({
     height: SOURCE_CARD_H,
     borderRadius: 24,
     overflow: "visible",
+  },
+  sourceProBadge: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    zIndex: 4,
   },
   sourceCardInner: {
     height: SOURCE_CARD_H,

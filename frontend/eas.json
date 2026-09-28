@@ -12,6 +12,15 @@
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://arcanyx.ru"
       }
+    },
+    "production": {
+      "distribution": "store",
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://arcanyx.ru"
+      }
     }
   }
 }

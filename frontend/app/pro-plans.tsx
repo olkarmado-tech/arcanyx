@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Linking,
   Pressable,
   ScrollView,
@@ -13,6 +14,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 import ProHeroHeader from "../src/components/pro/ProHeroHeader";
+import { useUser } from "../src/context/UserContext";
+import {
+  isRuStorePurchaseCancelled,
+  purchaseRuStoreSubscription,
+  type RuStorePlanId,
+} from "../src/services/rustorePay";
 import { theme } from "../src/theme";
 
 const NEUTRAL = {
@@ -68,31 +75,33 @@ const PLANS: Plan[] = [
     id: "month",
     period: "Месяц",
     monthly: "399\u00A0₽",
-    detail: "399\u00A0₽ каждый месяц",
+    detail: "3 дня бесплатно, затем 399\u00A0₽ каждый месяц",
     checkout: "399\u00A0₽",
-    renewNote: "Сейчас — 399\u00A0₽ за месяц. Далее — ежемесячно.",
+    renewNote:
+      "3 дня бесплатно. Затем 399\u00A0₽ за месяц и далее ежемесячно.",
   },
   {
     id: "half",
     period: "6 месяцев",
     monthly: "267\u00A0₽",
     monthlyApprox: true,
-    detail: "1\u00A0599\u00A0₽ раз в 6 месяцев",
+    detail: "3 дня бесплатно, затем 1\u00A0599\u00A0₽ раз в 6 месяцев",
     titleBadge: "−33%",
     checkout: "1\u00A0599\u00A0₽",
-    renewNote: "Сейчас — 1\u00A0599\u00A0₽ за 6 месяцев. Далее — каждые полгода.",
+    renewNote:
+      "3 дня бесплатно. Затем 1\u00A0599\u00A0₽ за 6 месяцев и далее каждые полгода.",
   },
   {
     id: "year",
     period: "Год",
     monthly: "200\u00A0₽",
     monthlyApprox: true,
-    detail: "2\u00A0399\u00A0₽ раз в год",
+    detail: "3 дня бесплатно, затем 2\u00A0399\u00A0₽ раз в год",
     savings: "Экономия 2\u00A0389\u00A0₽ за год",
     titleBadge: "Максимальная выгода",
     priceBadge: "−50%",
     checkout: "2\u00A0399\u00A0₽",
-    renewNote: "Сейчас — 2\u00A0399\u00A0₽ за год. Далее — ежегодно.",
+    renewNote: "3 дня бесплатно. Затем 2\u00A0399\u00A0₽ за год и далее ежегодно.",
   },
 ];
 
@@ -182,7 +191,10 @@ function PlanCardWash({ planId }: { planId: PlanId }) {
 export default function ProPlansScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { isPro, grantRuStoreEntitlement } = useUser();
   const [selectedId, setSelectedId] = useState<PlanId>("year");
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
   const selected = PLANS.find((plan) => plan.id === selectedId) ?? PLANS[2];
 
   const handleBack = () => {
@@ -197,6 +209,28 @@ export default function ProPlansScreen() {
 
   const openLink = (url: string) => {
     Linking.openURL(url).catch(() => {});
+  };
+
+  const checkout = async () => {
+    if (paying || isPro) return;
+    setPayError(null);
+    setPaying(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    try {
+      await purchaseRuStoreSubscription(selected.id as RuStorePlanId);
+      await grantRuStoreEntitlement();
+      router.replace("/pro" as never);
+    } catch (error) {
+      if (!isRuStorePurchaseCancelled(error)) {
+        setPayError(
+          error instanceof Error
+            ? error.message
+            : "Не удалось открыть оплату RuStore.",
+        );
+      }
+    } finally {
+      setPaying(false);
+    }
   };
 
   return (
@@ -215,7 +249,8 @@ export default function ProPlansScreen() {
           <View style={styles.intro}>
             <Text style={styles.title}>Выбери свой ритм</Text>
             <Text style={styles.subtitle}>
-              Все возможности Pro — в любом тарифе.
+              3 дня бесплатно, затем выбранный тариф.{"\n"}
+              Все возможности Pro — в любом плане.
             </Text>
           </View>
 
@@ -338,18 +373,19 @@ export default function ProPlansScreen() {
             { paddingBottom: Math.max(insets.bottom, 12) + 20 },
           ]}
         >
+          {payError ? <Text style={styles.payError}>{payError}</Text> : null}
           <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(
-                () => {},
-              );
-            }}
+            onPress={() => void checkout()}
+            disabled={paying || isPro}
             testID="pro-checkout"
             accessibilityRole="button"
-            accessibilityLabel={`Оформить Pro за ${selected.checkout}`}
+            accessibilityLabel={
+              isPro ? "Подписка активна" : "Начать 3 дня бесплатно"
+            }
             style={({ pressed }) => [
               styles.ctaWrap,
-              pressed && styles.ctaPressed,
+              pressed && !paying && !isPro && styles.ctaPressed,
+              (paying || isPro) && { opacity: 0.85 },
             ]}
           >
             <LinearGradient
@@ -358,9 +394,13 @@ export default function ProPlansScreen() {
               end={{ x: 1, y: 0 }}
               style={styles.cta}
             >
-              <Text style={styles.ctaText}>
-                Оформить Pro за {selected.checkout}
-              </Text>
+              {paying ? (
+                <ActivityIndicator color={theme.colors.primaryCtaText} />
+              ) : (
+                <Text style={styles.ctaText}>
+                  {isPro ? "Подписка активна" : "Начать 3 дня бесплатно"}
+                </Text>
+              )}
             </LinearGradient>
           </Pressable>
           <Text style={styles.renewNote}>{selected.renewNote}</Text>
@@ -570,6 +610,15 @@ const styles = StyleSheet.create({
     color: theme.colors.primaryCtaText,
     fontFamily: theme.fonts.bodySemi,
     fontSize: 17,
+  },
+  payError: {
+    color: "#F4B2C0",
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: "center",
+    marginBottom: 10,
+    paddingHorizontal: 8,
   },
   renewNote: {
     color: "#9A94AB",

@@ -3,7 +3,7 @@ import { apiBaseUrl, ApiError } from "./api";
 export const TAROT_CHAT_MAX_FOLLOWUPS = 2;
 export const TAROT_CHAT_QUESTION_MAX_LENGTH = 500;
 /** Free / guest / non‑Pro: how many new AI tarot chats can be started. */
-export const FREE_TAROT_INTERPRET_LIMIT = 5;
+export const FREE_TAROT_INTERPRET_LIMIT = 3;
 
 export const TAROT_CHAT_TOPICS = [
   "Ситуация",

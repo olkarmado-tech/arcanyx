@@ -45,6 +45,7 @@ import {
 } from "lucide-react-native";
 import { theme } from "../../src/theme";
 import CosmicBackground from "../../src/components/CosmicBackground";
+import ProCrown from "../../src/components/ProCrown";
 import GlassCard from "../../src/components/GlassCard";
 import SettingsModal from "../../src/components/profile/SettingsModal";
 import SparkleField from "../../src/components/Sparkles";
@@ -64,7 +65,17 @@ import {
   interpretDream,
   startDreamIllustration,
 } from "../../src/services/dreamInterpretation";
-import { meditationCoverUrl } from "../../src/services/meditations";
+import {
+  fetchMeditations,
+  meditationCoverUrl,
+  readCachedMeditations,
+} from "../../src/services/meditations";
+import {
+  FREE_DREAM_INTERPRET_LIMIT,
+  canInterpretDream,
+  dreamInterpretationsRemaining,
+  freeMeditationSlugSet,
+} from "../../src/entitlements/access";
 
 const HOME_LOGO = require("../../assets/home/logo.png");
 const HERO_BG = require("../../assets/home/bg-main3.jpg");
@@ -251,6 +262,7 @@ type Ritual = {
   subtitle: string;
   qrImage: ImageSourcePropType;
   icon: "moon" | "orb" | "sparkle" | "sun" | "headphones";
+  pro?: boolean;
 };
 
 /** Подпись плитки «Медитация», пока каталог ещё не загрузился. */
@@ -382,6 +394,9 @@ function QuickRitualTile({
               end={{ x: 0.5, y: 1 }}
               style={styles.ritualTextBandGradient}
             />
+            {ritual.pro ? (
+              <ProCrown style={styles.ritualProBadge} />
+            ) : null}
             <View style={styles.ritualCardFooter}>
               <QuickRitualIcon kind={ritual.icon} color="#FFFFFF" size={21} />
               <Text style={styles.ritualTitleImg} numberOfLines={2}>
@@ -446,8 +461,10 @@ export default function HomeScreen() {
     getTarget: () => dreamSectionRef.current,
   });
   useScrollToTop(scrollRef);
-  const { addItem, updateItem } = useHistory();
-  const { name, isAuthenticated } = useUser();
+  const { addItem, items, updateItem } = useHistory();
+  const { name, isAuthenticated, isPro } = useUser();
+  const dreamsLeft = dreamInterpretationsRemaining(isPro, items);
+  const [freeMeditationSlugs, setFreeMeditationSlugs] = useState<Set<string> | null>(null);
   const userName = isAuthenticated ? name : "Гость";
   const [isSettingsVisible, setSettingsVisible] = useState(false);
   const [heroHeight, setHeroHeight] = useState(0);
@@ -510,12 +527,41 @@ export default function HomeScreen() {
     };
   });
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const cached = await readCachedMeditations();
+      if (!cancelled && cached) {
+        setFreeMeditationSlugs(freeMeditationSlugSet(cached.items));
+      }
+      try {
+        const fresh = await fetchMeditations();
+        if (!cancelled) setFreeMeditationSlugs(freeMeditationSlugSet(fresh.items));
+      } catch {
+        // Cached catalog is enough to mark locked meditations.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const dailyMeditationLocked =
+    !isPro &&
+    !!dailyMeditation &&
+    !!freeMeditationSlugs &&
+    !freeMeditationSlugs.has(dailyMeditation.slug);
+
   const handleQuickRitualPress = useCallback(
     (key: string) => {
       if (key === "oracle") router.push("/(tabs)/gadania?tab=oracle");
       if (key === "daily-spread") router.push("/(tabs)/gadania?tab=tarot");
       if (key === "dream") router.push("/(tabs)/dreambook");
       if (key === "meditation") {
+        if (dailyMeditationLocked) {
+          router.push("/pro" as never);
+          return;
+        }
         router.push(
           dailyMeditation
             ? `/meditation-player?slug=${encodeURIComponent(dailyMeditation.slug)}`
@@ -523,7 +569,7 @@ export default function HomeScreen() {
         );
       }
     },
-    [dailyMeditation, router],
+    [dailyMeditation, dailyMeditationLocked, router],
   );
 
   /** Первая плитка — медитация дня: обложка, название и переход сразу в плеер. */
@@ -536,10 +582,11 @@ export default function HomeScreen() {
         subtitle: dailyMeditation?.title ?? MEDITATION_TILE_FALLBACK_SUB,
         qrImage: cover ? { uri: cover } : QR_AFFIRM,
         icon: "headphones",
+        pro: dailyMeditationLocked,
       },
       ...QUICK_RITUALS,
     ];
-  }, [dailyMeditation]);
+  }, [dailyMeditation, dailyMeditationLocked]);
 
   /** Ширина как у прежней крупной карточки в бенто (доля 1.08 от пары 1.08+1). */
   const ritualCardWidth = useMemo(() => {
@@ -618,8 +665,13 @@ export default function HomeScreen() {
   }, []);
 
   const handleDreamInterpret = useCallback(async () => {
+    if (dreamInterpretLoading) return;
+    if (!canInterpretDream(isPro, items)) {
+      router.push("/pro" as never);
+      return;
+    }
     const dreamSnippet = dreamText.trim();
-    if (!dreamSnippet || dreamInterpretLoading) return;
+    if (!dreamSnippet) return;
 
     setDreamInterpretError(null);
     setDreamInterpretLoading(true);
@@ -653,9 +705,11 @@ export default function HomeScreen() {
     } finally {
       setDreamInterpretLoading(false);
     }
-  }, [addItem, dreamInterpretLoading, dreamText, router, updateItem]);
+  }, [addItem, dreamInterpretLoading, dreamText, isPro, items, router, updateItem]);
 
-  const dreamReady = dreamText.trim().length > 0 && !dreamInterpretLoading;
+  const dreamLocked = !canInterpretDream(isPro, items);
+  const dreamReady =
+    !dreamInterpretLoading && (dreamLocked || dreamText.trim().length > 0);
 
   return (
     <View style={styles.root}>
@@ -1227,6 +1281,7 @@ export default function HomeScreen() {
                   end={{ x: 1, y: 0 }}
                   style={[styles.ctaGradient, styles.dreamCtaWide]}
                 >
+                  {dreamsLeft === 0 ? <ProCrown /> : null}
                   <Text
                     style={[
                       styles.ctaText,
@@ -1244,6 +1299,13 @@ export default function HomeScreen() {
                   />
                 </LinearGradient>
               </Pressable>
+              {!isPro ? (
+                <Text style={styles.dreamQuota}>
+                  {dreamsLeft > 0
+                    ? `Бесплатно: ${dreamsLeft} из ${FREE_DREAM_INTERPRET_LIMIT}`
+                    : "Бесплатные толкования закончились"}
+                </Text>
+              ) : null}
             </View>
           </GlassCard>
           </View>
@@ -1713,6 +1775,14 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.bodyMedium,
     fontSize: 12,
   },
+  dreamQuota: {
+    color: "#C9C2D8",
+    fontFamily: theme.fonts.body,
+    fontSize: 12,
+    lineHeight: 16,
+    textAlign: "center",
+    marginTop: 10,
+  },
   dreamInterpretError: {
     color: "#F4B2C0",
     fontFamily: theme.fonts.bodyMedium,
@@ -1861,6 +1931,12 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     overflow: "hidden",
     backgroundColor: "#1a1428",
+  },
+  ritualProBadge: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    zIndex: 4,
   },
   /** Дополнительное затемнение только в нижней зоне под текстом */
   ritualTextBandGradient: {

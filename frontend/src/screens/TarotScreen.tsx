@@ -48,6 +48,7 @@ import {
   ChevronDown,
   Check,
   ArrowRight,
+  Crown,
   RefreshCw,
   Share,
 } from "lucide-react-native";
@@ -1720,6 +1721,11 @@ export default function TarotScreen({
                   style={styles.aiCtaGradient}
                 >
                   <View style={styles.aiCtaMain}>
+                    {!chatStarted &&
+                    !interpretQuota.unlimited &&
+                    interpretQuota.remaining === 0 ? (
+                      <Crown color="#F8E7C2" size={16} strokeWidth={2} fill="#C9A15B" />
+                    ) : null}
                     <Text
                       style={[
                         styles.aiCtaText,
