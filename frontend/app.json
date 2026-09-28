@@ -70,7 +70,8 @@
           "enableMicrophonePermission": false
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "./plugins/withRuStorePay"
     ],
     "experiments": {
       "typedRoutes": true
@@ -79,6 +80,15 @@
       "router": {},
       "eas": {
         "projectId": "7f0583ac-98c0-43f6-9733-0668d67a54af"
+      },
+      "rustore": {
+        "consoleApplicationId": "2063760441",
+        "payScheme": "frontend",
+        "products": {
+          "month": "arcanyx_pro_month",
+          "half": "arcanyx_pro_6m",
+          "year": "arcanyx_pro_year"
+        }
       }
     }
   }

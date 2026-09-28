@@ -20,8 +20,11 @@ import { Headphones, Heart, Search } from "lucide-react-native";
 import { theme } from "../theme";
 import CosmicBackground from "../components/CosmicBackground";
 import GlassCard from "../components/GlassCard";
+import ProCrown from "../components/ProCrown";
 import ScreenHeading from "../components/ScreenHeading";
 import { useMeditationFavorites } from "../context/MeditationFavoritesContext";
+import { useUser } from "../context/UserContext";
+import { freeMeditationSlugSet } from "../entitlements/access";
 import {
   fetchMeditations,
   readCachedMeditations,
@@ -144,6 +147,9 @@ export default function MeditationsScreen() {
     }
   }, [loadOnce]);
 
+  const { isPro } = useUser();
+  const freeSlugs = useMemo(() => freeMeditationSlugSet(items), [items]);
+
   const visibleItems = useMemo(() => {
     const filtered = filterCatalog(items, debounced, tag);
     return favoritesOnly
@@ -152,6 +158,11 @@ export default function MeditationsScreen() {
   }, [debounced, favoriteSlugs, favoritesOnly, items, tag]);
 
   const openItem = (item: Meditation) => {
+    if (!isPro && !freeSlugs.has(item.slug)) {
+      Haptics.selectionAsync().catch(() => {});
+      router.push("/pro" as never);
+      return;
+    }
     Haptics.selectionAsync().catch(() => {});
     const cover = meditationCoverUrl(item);
     if (cover) {
@@ -382,6 +393,7 @@ export default function MeditationsScreen() {
                       />
                     </Pressable>
                     <View style={styles.cardFooter}>
+                      {!isPro && !freeSlugs.has(item.slug) ? <ProCrown /> : null}
                       <Text style={styles.cardTitle} numberOfLines={3}>
                         {item.title}
                       </Text>

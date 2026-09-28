@@ -36,6 +36,7 @@ import {
 } from "../context/HistoryContext";
 import { useUser } from "../context/UserContext";
 import { useTarotSpreads } from "../context/TarotSpreadsContext";
+import { FREE_TAROT_CHAT_ANSWERS } from "../entitlements/access";
 import { ApiError } from "../services/api";
 import {
   TAROT_CHAT_MAX_FOLLOWUPS,
@@ -181,6 +182,10 @@ export default function TarotChatScreen({ historyId }: Props) {
   const hydratedChatRef = useRef(false);
 
   const remaining = Math.max(0, TAROT_CHAT_MAX_FOLLOWUPS - followupsUsed);
+  const assistantAnswers = messages.filter((message) => message.role === "assistant").length;
+  const canFollowUp = isPro
+    ? remaining > 0
+    : assistantAnswers < FREE_TAROT_CHAT_ANSWERS;
   const interpretQuota = useMemo(
     () => getTarotInterpretQuota({ isPro, items }),
     [isPro, items],
@@ -326,8 +331,8 @@ export default function TarotChatScreen({ historyId }: Props) {
     if (!item || sending) return;
     if (!conversationId) return;
 
-    if (remaining <= 0) {
-      openPro();
+    if (!canFollowUp) {
+      if (!isPro) openPro();
       return;
     }
 
@@ -389,14 +394,15 @@ export default function TarotChatScreen({ historyId }: Props) {
       scrollToEnd();
     }
   }, [
+    canFollowUp,
     conversationId,
     draft,
+    isPro,
     item,
     messages,
     openPro,
     persistChat,
     question,
-    remaining,
     scrollToEnd,
     sending,
     topic,
@@ -714,7 +720,7 @@ export default function TarotChatScreen({ historyId }: Props) {
                   </View>
                 ) : null}
                 {error ? <Text style={styles.errorText}>{error}</Text> : null}
-                {remaining <= 0 && !sending ? (
+                {!canFollowUp && !sending ? (
                   <GlassCard
                     borderColor={theme.colors.borderGold}
                     glow="gold"
@@ -725,7 +731,7 @@ export default function TarotChatScreen({ historyId }: Props) {
                       <Text style={styles.proUpsellText}>
                         {isPro
                           ? "Уточнения в этом раскладе закончились. Новый вопрос можно задать в следующем раскладе."
-                          : "Бесплатные уточнения в этом раскладе закончились. Pro откроет более глубокий разговор с картами."}
+                          : "Два бесплатных ответа в этом толковании уже использованы. Pro откроет продолжение разговора."}
                       </Text>
                       {!isPro ? (
                         <Pressable
@@ -764,7 +770,7 @@ export default function TarotChatScreen({ historyId }: Props) {
             )}
           </ScrollView>
 
-          {phase === "chat" && (remaining > 0 || sending) ? (
+          {phase === "chat" && (canFollowUp || sending) ? (
             <View
               style={[
                 styles.composer,

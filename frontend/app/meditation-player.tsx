@@ -23,8 +23,11 @@ import { Heart, Pause, Play, X } from "lucide-react-native";
 import Svg, { Circle } from "react-native-svg";
 import { theme } from "../src/theme";
 import { useMeditationFavorites } from "../src/context/MeditationFavoritesContext";
+import { useUser } from "../src/context/UserContext";
+import { isMeditationFree } from "../src/entitlements/access";
 import {
   fetchMeditation,
+  fetchMeditations,
   formatDuration,
   meditationAudioUrl,
   meditationCoverUrl,
@@ -272,6 +275,7 @@ export default function MeditationPlayerScreen() {
   const [coverFailed, setCoverFailed] = useState(false);
   const [descOpen, setDescOpen] = useState(true);
   const { isFavorite, isToggling, toggleFavorite } = useMeditationFavorites();
+  const { isPro } = useUser();
 
   const audioUrl = useMemo(
     () => (item ? meditationAudioUrl(item) : null),
@@ -291,6 +295,21 @@ export default function MeditationPlayerScreen() {
     void (async () => {
       await Promise.resolve();
       if (cancelled) return;
+      if (!isPro) {
+        let catalog = await readCachedMeditations();
+        if (!catalog) {
+          try {
+            catalog = await fetchMeditations();
+          } catch {
+            catalog = null;
+          }
+        }
+        if (cancelled) return;
+        if (catalog && !isMeditationFree(slug, catalog.items)) {
+          router.replace("/pro" as never);
+          return;
+        }
+      }
       setError(null);
       setCoverFailed(false);
       setDescOpen(true);
@@ -325,7 +344,7 @@ export default function MeditationPlayerScreen() {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [isPro, router, slug]);
 
   const coverUri = item ? meditationCoverUrl(item) : null;
   const cover = coverUri && !coverFailed ? { uri: coverUri } : FALLBACK_COVER;

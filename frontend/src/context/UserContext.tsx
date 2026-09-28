@@ -6,6 +6,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { ApiError } from "../services/api";
@@ -20,6 +21,11 @@ import {
   resetPasswordWithCode,
   startGoogleSignIn,
 } from "../services/auth";
+import {
+  queryRuStoreSubscription,
+  readStoredRuStorePro,
+  writeStoredRuStorePro,
+} from "../services/rustorePay";
 
 export type UserProfile = {
   id: string | null;
@@ -56,6 +62,8 @@ type UserContextValue = UserProfile & {
   signOut: () => void;
   setNotificationsEnabled: (enabled: boolean) => void;
   resetProfile: () => void;
+  refreshRuStoreEntitlement: () => Promise<boolean>;
+  grantRuStoreEntitlement: () => Promise<void>;
 };
 
 const PROFILE_KEY = "@mystix_user_v1";
@@ -95,6 +103,30 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [rustorePro, setRustorePro] = useState(false);
+  const rustoreGrant = useRef(0);
+
+  const grantRuStoreEntitlement = useCallback(async () => {
+    rustoreGrant.current += 1;
+    await writeStoredRuStorePro(true);
+    setRustorePro(true);
+  }, []);
+
+  const refreshRuStoreEntitlement = useCallback(async () => {
+    const generation = rustoreGrant.current;
+    const stored = await readStoredRuStorePro();
+    if (generation === rustoreGrant.current) setRustorePro(stored);
+    const live = await queryRuStoreSubscription();
+    if (generation !== rustoreGrant.current) return true;
+    if (live === null) return stored;
+    await writeStoredRuStorePro(live);
+    setRustorePro(live);
+    return live;
+  }, []);
+
+  useEffect(() => {
+    void refreshRuStoreEntitlement();
+  }, [refreshRuStoreEntitlement]);
 
   const applySession = useCallback(async (accessToken: string, user: AuthUser) => {
     const next = profileFromUser(user);
@@ -305,6 +337,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       ...profile,
+      isPro: profile.isPro || rustorePro,
       token,
       hydrated,
       authBusy,
@@ -319,6 +352,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       signOut,
       setNotificationsEnabled,
       resetProfile,
+      refreshRuStoreEntitlement,
+      grantRuStoreEntitlement,
     }),
     [
       authBusy,
@@ -326,6 +361,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
       completeAuthFromCode,
       hydrated,
       profile,
+      grantRuStoreEntitlement,
+      refreshRuStoreEntitlement,
+      rustorePro,
       resetProfile,
       setName,
       setNotificationsEnabled,
