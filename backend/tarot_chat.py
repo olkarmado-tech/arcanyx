@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import threading
 import time
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import requests
 from fastapi import APIRouter, HTTPException
@@ -32,6 +33,19 @@ MAX_QUESTION_LENGTH = 800
 MAX_MESSAGE_LENGTH = 800
 MAX_CARDS = 8
 FALLBACK_CONVERSATION_PREFIX = "local-fallback-"
+# Lower than the old ~0.7: higher temperature makes Mistral drop foreign tokens into Russian.
+TAROT_TEMPERATURE = 0.4
+# One stray name is removed locally. A heavily mixed reply is sampled again.
+FOREIGN_WORDS_BEFORE_RETRY = 4
+
+LANGUAGE_LOCK = (
+    "Пиши только по-русски и только кириллицей. "
+    "Не вставляй слова, имена и фразы на других языках, даже одно слово на отдельной строке. "
+    "Не выдумывай имена людей. Не цитируй эту инструкцию."
+)
+
+# Any-script words, including internal hyphens and apostrophes.
+_WORD = re.compile(r"[^\W\d_]+(?:['’-][^\W\d_]+)*", re.UNICODE)
 
 _lock = threading.Lock()
 _followups_used: Dict[str, int] = {}
@@ -150,6 +164,119 @@ def extract_assistant_reply(body: dict) -> str:
     raise ValueError("Mistral conversation response had no assistant text")
 
 
+def _is_cyrillic_char(ch: str) -> bool:
+    code = ord(ch)
+    return (
+        0x0400 <= code <= 0x04FF
+        or 0x0500 <= code <= 0x052F
+        or 0x2DE0 <= code <= 0x2DFF
+        or 0xA640 <= code <= 0xA69F
+    )
+
+
+def _letter_stats(word: str) -> tuple[int, int]:
+    cyrillic = 0
+    foreign = 0
+    for ch in word:
+        if not ch.isalpha():
+            continue
+        if _is_cyrillic_char(ch):
+            cyrillic += 1
+        else:
+            foreign += 1
+    return cyrillic, foreign
+
+
+def _cyrillic_letter_count(text: str) -> int:
+    return sum(1 for ch in text if _is_cyrillic_char(ch))
+
+
+def foreign_word_count(text: str) -> int:
+    return sum(1 for match in _WORD.finditer(text) if _letter_stats(match.group(0))[1] >= 2)
+
+
+def _capitalize_line_start(line: str) -> str:
+    for index, ch in enumerate(line):
+        if not ch.isalpha():
+            continue
+        if _is_cyrillic_char(ch) and ch.islower():
+            return line[:index] + ch.upper() + line[index + 1 :]
+        break
+    return line
+
+
+def _clean_line(line: str) -> str:
+    removed = False
+
+    def repl(match: re.Match[str]) -> str:
+        nonlocal removed
+        word = match.group(0)
+        if _letter_stats(word)[1] >= 2:
+            removed = True
+            return ""
+        return word
+
+    cleaned = _WORD.sub(repl, line)
+    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
+    cleaned = re.sub(r"\s+([,.;:!?…])", r"\1", cleaned)
+    cleaned = re.sub(r"([«(])\s+", r"\1", cleaned)
+    cleaned = re.sub(r"\s+([»)])", r"\1", cleaned)
+    cleaned = re.sub(r"\(\s*\)", "", cleaned)
+    cleaned = re.sub(r"«\s*»", "", cleaned)
+    cleaned = re.sub(r"[\"“”']\s*[\"“”']", "", cleaned)
+    cleaned = re.sub(r"(?:\s*[—–-]\s*){2,}", " — ", cleaned)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned)
+    cleaned = cleaned.strip()
+    if removed:
+        cleaned = re.sub(r"^[\s—–,:;-]+", "", cleaned)
+        cleaned = re.sub(r"[\s—–,:;-]+$", "", cleaned)
+        cleaned = _capitalize_line_start(cleaned)
+    return cleaned.strip()
+
+
+def sanitize_tarot_reply(text: str) -> str:
+    """Drop stray non-Russian words Mistral sometimes injects into Russian prose."""
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    lines: List[str] = []
+    for raw_line in normalized.split("\n"):
+        if not raw_line.strip():
+            lines.append("")
+            continue
+        cleaned = _clean_line(raw_line)
+        if _cyrillic_letter_count(cleaned) == 0:
+            continue
+        lines.append(cleaned)
+
+    collapsed: List[str] = []
+    blank = False
+    for line in lines:
+        if not line:
+            if collapsed and not blank:
+                collapsed.append("")
+            blank = True
+            continue
+        blank = False
+        collapsed.append(line)
+    return "\n".join(collapsed).strip()
+
+
+def should_retry_for_language(raw: str, cleaned: str) -> bool:
+    raw_cyr = _cyrillic_letter_count(raw)
+    clean_cyr = _cyrillic_letter_count(cleaned)
+    if clean_cyr == 0:
+        return True
+    if foreign_word_count(raw) >= FOREIGN_WORDS_BEFORE_RETRY:
+        return True
+    if raw_cyr >= 40 and clean_cyr < int(raw_cyr * 0.75):
+        return True
+    return False
+
+
+def polish_tarot_reply(raw: str) -> tuple[str, bool]:
+    cleaned = sanitize_tarot_reply(raw)
+    return cleaned, should_retry_for_language(raw, cleaned)
+
+
 def build_start_user_message(payload: TarotChatStartRequest) -> str:
     lines = [
         f"Расклад: {payload.spread_title_ru.strip()} ({payload.spread_id.strip()})",
@@ -202,9 +329,15 @@ def build_start_user_message(payload: TarotChatStartRequest) -> str:
             focus,
             "",
             instruction,
+            "",
+            LANGUAGE_LOCK,
         ]
     )
     return "\n".join(lines)
+
+
+def build_followup_user_message(message: str) -> str:
+    return f"{message.strip()}\n\n{LANGUAGE_LOCK}"
 
 
 def build_fallback_reply(payload: Optional[TarotChatStartRequest]) -> str:
@@ -240,6 +373,60 @@ def _mistral_headers(api_key: str) -> dict:
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
+
+
+def _completion_body(**extra: Any) -> dict:
+    body: Dict[str, Any] = {
+        "stream": False,
+        "completion_args": {"temperature": TAROT_TEMPERATURE},
+    }
+    body.update(extra)
+    return body
+
+
+def _read_conversation(api_key: str, url: str, request_body: dict) -> tuple[str, str]:
+    body = call_conversations_with_retries(api_key, url, request_body)
+    conversation_id = str(body.get("conversation_id") or "").strip()
+    return conversation_id, extract_assistant_reply(body)
+
+
+def _polish_or_retry(
+    api_key: str,
+    url: str,
+    request_body: dict,
+    retry_request: Optional[Callable[[str], Tuple[str, dict]]] = None,
+) -> tuple[str, str]:
+    """Return conversation id and a Russian reply.
+
+    A single stray foreign word is stripped. When the answer is mostly another
+    language and `retry_request` is set, a second independent sample is taken
+    and the more Russian one is kept.
+    """
+    conversation_id, raw = _read_conversation(api_key, url, request_body)
+    cleaned, retry = polish_tarot_reply(raw)
+    removed = foreign_word_count(raw)
+    if removed and not retry:
+        logger.info("Tarot reply stripped foreign words | count=%s", removed)
+
+    if retry and retry_request is not None:
+        logger.info(
+            "Tarot reply mixed languages, retrying | foreign_words=%s | cyrillic_letters=%s",
+            removed,
+            _cyrillic_letter_count(cleaned),
+        )
+        try:
+            retry_url, retry_body = retry_request(conversation_id)
+            new_id, raw_retry = _read_conversation(api_key, retry_url, retry_body)
+            cleaned_retry = sanitize_tarot_reply(raw_retry)
+            if new_id and _cyrillic_letter_count(cleaned_retry) >= _cyrillic_letter_count(cleaned):
+                conversation_id = new_id
+                cleaned = cleaned_retry
+        except Exception:
+            logger.exception("Tarot language retry failed")
+
+    if _cyrillic_letter_count(cleaned) < 20:
+        raise ValueError("Tarot reply was not Russian after cleanup")
+    return conversation_id, cleaned
 
 
 def call_conversations_once(api_key: str, url: str, request_body: dict) -> dict:
@@ -346,22 +533,21 @@ def start_tarot_chat_sync(payload: TarotChatStartRequest) -> TarotChatResponse:
             fallback=True,
         )
 
-    request_body = {
-        "agent_id": agent_id,
-        "inputs": user_message,
-        "stream": False,
-    }
+    request_body = _completion_body(agent_id=agent_id, inputs=user_message)
+    start_url = "https://api.mistral.ai/v1/conversations"
 
     try:
-        body = call_conversations_with_retries(
+        def retry_start(_conversation_id: str) -> Tuple[str, dict]:
+            return start_url, request_body
+
+        conversation_id, reply = _polish_or_retry(
             api_key,
-            "https://api.mistral.ai/v1/conversations",
+            start_url,
             request_body,
+            retry_start,
         )
-        conversation_id = str(body.get("conversation_id") or "").strip()
         if not conversation_id:
             raise ValueError("Mistral conversation_id is missing")
-        reply = extract_assistant_reply(body)
         _set_followups_used(conversation_id, conversation_id, 0)
         return TarotChatResponse(
             conversation_id=conversation_id,
@@ -410,16 +596,12 @@ def followup_tarot_chat_sync(payload: TarotChatFollowupRequest) -> TarotChatResp
             used,
         )
 
-    request_body = {
-        "inputs": payload.message.strip(),
-        "stream": False,
-    }
+    request_body = _completion_body(inputs=build_followup_user_message(payload.message))
     url = f"https://api.mistral.ai/v1/conversations/{conversation_id}"
 
     try:
-        body = call_conversations_with_retries(api_key, url, request_body)
-        new_id = str(body.get("conversation_id") or conversation_id).strip()
-        reply = extract_assistant_reply(body)
+        new_id, reply = _polish_or_retry(api_key, url, request_body)
+        new_id = (new_id or conversation_id).strip()
         next_used = used + 1
         _set_followups_used(conversation_id, new_id or conversation_id, next_used)
         return TarotChatResponse(

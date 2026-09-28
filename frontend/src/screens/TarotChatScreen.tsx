@@ -9,6 +9,9 @@ import {
   TextInput,
   useWindowDimensions,
   View,
+  type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -22,6 +25,7 @@ import CosmicBackground from "../components/CosmicBackground";
 import GlassCard from "../components/GlassCard";
 import TarotCard from "../components/TarotCard";
 import RemainPill from "../components/RemainPill";
+import TarotChatReply from "../components/TarotChatReply";
 import { TAROT_DECK } from "../data/tarotCards";
 import { cardDetailed, cardShort, cardTitleRu } from "../data/tarotOrientation";
 import {
@@ -60,9 +64,9 @@ const TOPIC_ICONS: Record<
 > = {
   Ситуация: Sparkles,
   Любовь: Heart,
-  Карьера: TrendingUp,
   Отношения: Users,
-  Финансы: Coins,
+  Карьера: TrendingUp,
+  Деньги: Coins,
 };
 
 function cardsPayloadFromItem(
@@ -124,6 +128,7 @@ export default function TarotChatScreen({ historyId }: Props) {
   const { isPro } = useUser();
   const { getSpreadById } = useTarotSpreads();
   const scrollRef = useRef<ScrollView>(null);
+  const scrollMetrics = useRef({ y: 0, contentHeight: 0, layoutHeight: 0 });
   const questionAnchorRef = useRef<View>(null);
   const questionKeyboard = useScrollAboveKeyboard({
     scrollRef,
@@ -245,6 +250,42 @@ export default function TarotChatScreen({ historyId }: Props) {
     requestAnimationFrame(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
     });
+  }, []);
+
+  const handleThreadScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      questionKeyboard.onScroll(event);
+      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+      scrollMetrics.current = {
+        y: contentOffset.y,
+        contentHeight: contentSize.height,
+        layoutHeight: layoutMeasurement.height,
+      };
+    },
+    [questionKeyboard.onScroll],
+  );
+
+  const handleContentSizeChange = useCallback(
+    (_width: number, height: number) => {
+      scrollMetrics.current.contentHeight = height;
+      if (phase === "chat") scrollToEnd();
+    },
+    [phase, scrollToEnd],
+  );
+
+  const handleThreadLayout = useCallback((event: LayoutChangeEvent) => {
+    const nextHeight = event.nativeEvent.layout.height;
+    const { y, contentHeight, layoutHeight } = scrollMetrics.current;
+    const shrunk = layoutHeight > 0 && contentHeight > 0 && nextHeight < layoutHeight - 1;
+    const distanceFromEnd = contentHeight - (y + layoutHeight);
+    // The composer lifts over the keyboard and shortens this list. If the
+    // reader was already at the latest message, keep that message in view.
+    if (shrunk && distanceFromEnd < 48) {
+      const nextY = Math.max(0, contentHeight - nextHeight);
+      scrollRef.current?.scrollTo({ y: nextY, animated: false });
+      scrollMetrics.current.y = nextY;
+    }
+    scrollMetrics.current.layoutHeight = nextHeight;
   }, []);
 
   const handleStart = useCallback(async () => {
@@ -482,16 +523,18 @@ export default function TarotChatScreen({ historyId }: Props) {
             style={styles.flex}
             contentContainerStyle={[
               styles.scroll,
-              questionKeyboard.overlap > 0 && {
-                paddingBottom: 36 + questionKeyboard.overlap,
-              },
+              phase === "compose" &&
+                questionKeyboard.overlap > 0 && {
+                  paddingBottom: 36 + questionKeyboard.overlap,
+                },
             ]}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="interactive"
             showsVerticalScrollIndicator={false}
             scrollEventThrottle={16}
-            onScroll={questionKeyboard.onScroll}
-            onContentSizeChange={phase === "chat" ? scrollToEnd : undefined}
+            onScroll={handleThreadScroll}
+            onLayout={handleThreadLayout}
+            onContentSizeChange={handleContentSizeChange}
           >
             <ScreenHeading
               title={item.spreadLabelRu || spread.titleRu}
@@ -690,35 +733,23 @@ export default function TarotChatScreen({ historyId }: Props) {
               </GlassCard>
             ) : (
               <View style={styles.thread}>
-                {messages.map((message, index) => (
-                  <View
-                    key={`${message.role}-${index}`}
-                    style={[
-                      styles.bubble,
-                      message.role === "user"
-                        ? styles.bubbleUser
-                        : styles.bubbleAssistant,
-                    ]}
-                  >
-                    {message.role === "assistant" ? (
-                      <Text style={styles.bubbleRole}>Толкователь</Text>
-                    ) : null}
-                    <Text
-                      style={[
-                        styles.bubbleText,
-                        message.role === "user" && styles.bubbleTextUser,
-                      ]}
+                {messages.map((message, index) =>
+                  message.role === "user" ? (
+                    <View
+                      key={`${message.role}-${index}`}
+                      style={[styles.bubble, styles.bubbleUser]}
                     >
-                      {message.content}
-                    </Text>
-                  </View>
-                ))}
-                {sending ? (
-                  <View style={[styles.bubble, styles.bubbleAssistant]}>
-                    <Text style={styles.bubbleRole}>Толкователь</Text>
-                    <Text style={styles.typingText}>Думаю над картами…</Text>
-                  </View>
-                ) : null}
+                      <Text style={styles.bubbleText}>{message.content}</Text>
+                    </View>
+                  ) : (
+                    <TarotChatReply
+                      key={`${message.role}-${index}`}
+                      isLoading={false}
+                      text={message.content}
+                    />
+                  ),
+                )}
+                {sending ? <TarotChatReply isLoading text="" /> : null}
                 {error ? <Text style={styles.errorText}>{error}</Text> : null}
                 {!canFollowUp && !sending ? (
                   <GlassCard
@@ -787,7 +818,7 @@ export default function TarotChatScreen({ historyId }: Props) {
                     setDraft(value.slice(0, TAROT_CHAT_QUESTION_MAX_LENGTH));
                     if (error) setError(null);
                   }}
-                  placeholder="Уточните вопрос…"
+                  placeholder="Сообщение…"
                   placeholderTextColor={theme.colors.textMuted}
                   multiline
                   editable={!sending && Boolean(conversationId)}
@@ -1078,33 +1109,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.borderPurple,
   },
-  bubbleAssistant: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(35,31,58,0.82)",
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  bubbleRole: {
-    color: theme.colors.gold,
-    fontFamily: theme.fonts.bodySemi,
-    fontSize: 10,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    marginBottom: 6,
-  },
   bubbleText: {
     color: theme.colors.text,
     fontFamily: theme.fonts.body,
     fontSize: 15,
     lineHeight: 22,
-  },
-  bubbleTextUser: {
-    color: theme.colors.text,
-  },
-  typingText: {
-    color: theme.colors.textDim,
-    fontFamily: theme.fonts.bodyMedium,
-    fontSize: 14,
   },
   composer: {
     paddingHorizontal: 16,

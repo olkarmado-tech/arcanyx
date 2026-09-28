@@ -8,9 +8,9 @@ export const FREE_TAROT_INTERPRET_LIMIT = 3;
 export const TAROT_CHAT_TOPICS = [
   "Ситуация",
   "Любовь",
-  "Карьера",
   "Отношения",
-  "Финансы",
+  "Карьера",
+  "Деньги",
 ] as const;
 
 export type TarotChatTopic = (typeof TAROT_CHAT_TOPICS)[number];
@@ -52,7 +52,7 @@ export type TarotChatResponse = {
 const SPREAD_DEFAULT_TOPIC: Record<string, TarotChatTopic> = {
   "love-three": "Любовь",
   "career-growth": "Карьера",
-  "where-money": "Финансы",
+  "where-money": "Деньги",
   thoughts: "Отношения",
   "three-situation": "Ситуация",
   choice: "Ситуация",
