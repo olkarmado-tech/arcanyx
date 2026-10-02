@@ -23,7 +23,7 @@
       "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#2F5CE0"
+        "backgroundColor": "#290D37"
       },
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
@@ -47,7 +47,7 @@
           "image": "./assets/images/icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#000"
+          "backgroundColor": "#290D37"
         }
       ],
       "expo-web-browser",

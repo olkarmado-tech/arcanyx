@@ -200,3 +200,22 @@ progress { width: 100%; margin-top: 1rem; accent-color: var(--gold); }
   .content-tabs { padding-left: 1rem; padding-right: 1rem; }
   .warning, .flash { margin: 1rem; }
 }
+
+.pro-panel { padding: 1.5rem 2rem 3rem; max-width: 520px; }
+.pro-card {
+  padding: 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.pro-hint { color: var(--muted); font-size: .9rem; line-height: 1.5; }
+.pro-hint code { font-size: .85em; color: var(--gold); }
+.pro-toggle { display: flex; align-items: center; gap: .5rem; margin: 1rem 0; }
+.pro-result {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  background: var(--panel-2);
+  font-size: .8rem;
+  overflow-x: auto;
+}

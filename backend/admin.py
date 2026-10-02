@@ -16,8 +16,8 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, Field, field_validator
 from pymongo.errors import DuplicateKeyError
 
-from auth import get_current_admin, public_user
-from db import get_db
+from auth import get_current_admin, normalize_email, public_user
+from db import get_db, mongo_configured
 from meditations import cache_uploaded_audio, cache_uploaded_cover
 from storage import (
     s3_configured,
@@ -75,6 +75,11 @@ class MeditationDraftIn(BaseModel):
                 seen.add(key)
                 tags.append(tag[:60])
         return tags
+
+
+class AdminUserProRequest(BaseModel):
+    email: str = Field(min_length=5, max_length=120)
+    is_pro: bool = True
 
 
 class ReorderIn(BaseModel):
@@ -216,6 +221,26 @@ async def admin_asset(asset_name: str):
 @router.get("/status")
 async def admin_status(user: dict[str, Any] = Depends(get_current_admin)):
     return {"user": public_user(user), "storage": storage_status()}
+
+
+@router.post("/users/pro")
+async def set_user_pro(
+    body: AdminUserProRequest,
+    _user: dict[str, Any] = Depends(get_current_admin),
+):
+    if not mongo_configured():
+        raise HTTPException(status_code=503, detail="База данных недоступна")
+    email = normalize_email(body.email)
+    result = await get_db().users.update_one(
+        {"email": email},
+        {"$set": {"is_pro": body.is_pro, "updated_at": _utcnow()}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Пользователь с таким email не найден")
+    doc = await get_db().users.find_one({"email": email})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Пользователь с таким email не найден")
+    return {"user": public_user(doc)}
 
 
 @router.get("/meditations")

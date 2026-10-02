@@ -22,6 +22,7 @@ import uuid
 import requests
 
 from admin import page_router as admin_page_router, router as admin_router
+from admin_daily_quotes import router as admin_daily_quotes_router
 from admin_tarot_spreads import router as admin_tarot_spreads_router
 from auth import router as auth_router
 from db import close_db, connect_db, ping_db
@@ -29,6 +30,7 @@ from meditations import media_root, router as meditations_router, seed_meditatio
 from storage import s3_configured, upload_bytes
 from support import router as support_router
 from tarot_chat import router as tarot_chat_router
+from daily_quotes import router as daily_quotes_router, seed_daily_quotes
 from tarot_spreads import router as tarot_spreads_router, seed_tarot_spreads
 
 logging.basicConfig(
@@ -52,6 +54,7 @@ async def lifespan(_app: FastAPI):
         await connect_db()
         await seed_meditations()
         await seed_tarot_spreads()
+        await seed_daily_quotes()
     except Exception:
         logger.exception("MongoDB connection failed at startup")
     yield
@@ -64,9 +67,11 @@ api_router.include_router(auth_router)
 api_router.include_router(meditations_router)
 api_router.include_router(tarot_chat_router)
 api_router.include_router(tarot_spreads_router)
+api_router.include_router(daily_quotes_router)
 api_router.include_router(support_router)
 api_router.include_router(admin_router)
 api_router.include_router(admin_tarot_spreads_router)
+api_router.include_router(admin_daily_quotes_router)
 
 app.add_middleware(
     CORSMiddleware,

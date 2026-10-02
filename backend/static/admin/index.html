@@ -34,6 +34,8 @@
         <nav class="content-tabs" aria-label="Разделы">
           <button id="tab-meditations" class="content-tab active">Медитации</button>
           <button id="tab-spreads" class="content-tab">Расклады Таро</button>
+          <button id="tab-quotes" class="content-tab">Цитаты дня</button>
+          <button id="tab-pro" class="content-tab">Pro</button>
         </nav>
 
         <div id="meditations-panel" class="workspace">
@@ -253,6 +255,89 @@
             </form>
           </section>
         </div>
+
+        <div id="quotes-panel" class="workspace hidden">
+          <aside>
+            <div class="aside-head">
+              <div>
+                <strong>Цитаты</strong>
+                <small id="quote-item-count"></small>
+              </div>
+              <button id="quote-new-button" class="primary compact">+ Новая</button>
+            </div>
+            <p class="drag-hint">Перетащите карточки, чтобы изменить порядок в приложении.</p>
+            <div id="quote-list" class="meditation-list"></div>
+          </aside>
+
+          <section class="editor">
+            <div id="quote-empty-editor" class="empty">
+              Выберите цитату или создайте новую.
+            </div>
+            <form id="quote-editor-form" class="hidden">
+              <div class="editor-title">
+                <div>
+                  <span id="quote-publish-badge" class="badge">Черновик</span>
+                  <h2 id="quote-editor-heading">Новая цитата</h2>
+                </div>
+                <button type="button" id="quote-archive-button" class="danger ghost">
+                  В архив
+                </button>
+              </div>
+
+              <label>
+                Текст цитаты
+                <textarea id="quote-text" rows="5" required maxlength="2000" placeholder="«Текст с типографскими кавычками»"></textarea>
+              </label>
+              <label>
+                Автор
+                <input id="quote-author" required maxlength="160" />
+              </label>
+              <label class="sort-field">
+                Порядок
+                <input id="quote-sort" type="number" value="0" />
+              </label>
+
+              <div class="save-row">
+                <button type="submit" class="primary">Сохранить черновик</button>
+                <span id="quote-save-state"></span>
+              </div>
+
+              <div id="quote-publish-actions" class="publish-actions hidden">
+                <button type="button" id="quote-publish-button" class="primary">
+                  Опубликовать
+                </button>
+                <button type="button" id="quote-unpublish-button" class="ghost hidden">
+                  Снять с публикации
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+
+        <section id="pro-panel" class="pro-panel hidden">
+          <article class="pro-card">
+            <h2>Pro-подписка</h2>
+            <p class="pro-hint">
+              Меняет поле <code>is_pro</code> в MongoDB. Пользователю нужно перезапустить приложение
+              или войти снова, чтобы увидеть Pro.
+            </p>
+            <form id="pro-form">
+              <label>
+                Email пользователя
+                <input id="pro-email" type="email" required maxlength="120" autocomplete="off" />
+              </label>
+              <label class="pro-toggle">
+                <input id="pro-enabled" type="checkbox" checked />
+                Pro активен
+              </label>
+              <div class="save-row">
+                <button type="submit" class="primary">Сохранить</button>
+                <span id="pro-save-state"></span>
+              </div>
+            </form>
+            <pre id="pro-result" class="pro-result hidden"></pre>
+          </article>
+        </section>
       </section>
     </main>
     <script src="/admin/admin.js" defer></script>

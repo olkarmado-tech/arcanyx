@@ -1,7 +1,12 @@
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
-import { formatDailyQuotePlain, getDailyQuote } from "../data/dailyQuotes";
+import {
+  DAILY_QUOTES,
+  formatDailyQuotePlain,
+  getDailyQuoteForCatalog,
+} from "../data/dailyQuotes";
+import { readCachedDailyQuotes } from "./dailyQuotesCatalog";
 import { todayKey } from "../hooks/useDailyCard";
 
 const STORAGE_KEY = "@daily_quote_notifications_v1";
@@ -89,13 +94,15 @@ export async function syncDailyQuoteNotifications(): Promise<void> {
     );
   }
 
+  const cachedQuotes = (await readCachedDailyQuotes()) ?? DAILY_QUOTES;
+
   const nextIds: string[] = [];
   for (let offset = 0; offset < SCHEDULE_HORIZON_DAYS; offset += 1) {
     const triggerDate = notificationDateForOffset(now, offset);
     if (triggerDate.getTime() <= now.getTime()) continue;
 
     const quoteDayKey = todayKey(triggerDate);
-    const entry = getDailyQuote(quoteDayKey);
+    const entry = getDailyQuoteForCatalog(quoteDayKey, cachedQuotes);
     const id = await Notifications.scheduleNotificationAsync({
       content: {
         title: "Цитата дня",

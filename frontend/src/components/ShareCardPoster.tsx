@@ -1,6 +1,7 @@
 import React, { forwardRef } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import ArcanyxLogo from "./ArcanyxLogo";
 import { theme } from "../theme";
 import { TarotCard as TarotCardType } from "../data/tarotCards";
 import { frontArtSourceForCardId } from "../data/tarotFrontArt";
@@ -75,7 +76,7 @@ const ShareCardPoster = forwardRef<View, Props>(function ShareCardPoster(
             <Text style={styles.quote} numberOfLines={3}>
               «{quote}»
             </Text>
-            <Text style={styles.brand}>Arcanyx</Text>
+            <ArcanyxLogo height={16} style={styles.brandLogo} />
           </View>
         </View>
       </View>
@@ -166,11 +167,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 8,
   },
-  brand: {
-    color: "rgba(255,247,234,0.92)",
-    fontFamily: theme.fonts.display,
-    fontSize: 15,
-    letterSpacing: 0.6,
+  brandLogo: {
     marginTop: 14,
+    opacity: 0.95,
   },
 });

@@ -216,12 +216,21 @@ export const DAILY_QUOTES: readonly DailyQuoteEntry[] = [
 ];
 
 function indexByDay(dayKey: string, size: number): number {
+  if (size <= 0) return 0;
   const [year, month, date] = dayKey.split("-").map(Number);
   return (year * 372 + (month - 1) * 31 + date) % size;
 }
 
+export function getDailyQuoteForCatalog(
+  dayKey: string,
+  catalog: readonly DailyQuoteEntry[],
+): DailyQuoteEntry {
+  const source = catalog.length > 0 ? catalog : DAILY_QUOTES;
+  return source[indexByDay(dayKey, source.length)];
+}
+
 export function getDailyQuote(dayKey: string): DailyQuoteEntry {
-  return DAILY_QUOTES[indexByDay(dayKey, DAILY_QUOTES.length)];
+  return getDailyQuoteForCatalog(dayKey, DAILY_QUOTES);
 }
 
 /** Одна строка для уведомлений и шаринга */

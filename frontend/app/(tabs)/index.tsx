@@ -43,6 +43,7 @@ import {
   Sun,
 } from "lucide-react-native";
 import { theme } from "../../src/theme";
+import ArcanyxLogo from "../../src/components/ArcanyxLogo";
 import CosmicBackground from "../../src/components/CosmicBackground";
 import ProCrown from "../../src/components/ProCrown";
 import GlassCard from "../../src/components/GlassCard";
@@ -56,7 +57,7 @@ import { todayKey, useDailyCard } from "../../src/hooks/useDailyCard";
 import { useScrollAboveKeyboard } from "../../src/hooks/useKeyboardOverlap";
 import { useDailyMeditation } from "../../src/hooks/useDailyMeditation";
 import { getCardReading } from "../../src/data/tarotReadings";
-import { getDailyQuote } from "../../src/data/dailyQuotes";
+import { useDailyQuotes } from "../../src/context/DailyQuotesContext";
 import DreamInterpretLoadingScreen from "../../src/screens/DreamInterpretLoadingScreen";
 import {
   DREAM_TEXT_MAX_LENGTH,
@@ -76,7 +77,6 @@ import {
   freeMeditationSlugSet,
 } from "../../src/entitlements/access";
 
-const HOME_LOGO = require("../../assets/home/logo.png");
 const HERO_BG = require("../../assets/home/bg-main3.jpg");
 const ENERGY_BG = require("../../assets/home/bg-energy.jpg");
 const DREAM_BG = require("../../assets/home/bg-main-bottom.jpg");
@@ -156,7 +156,7 @@ const ENERGY_THEMES = [
   },
   {
     title: "Свобода\nи Лёгкость",
-    quote: "Иногда самый сильный шаг — это позволить уйти.",
+    quote: "Иногда самый сильный шаг — это позволить себе отступить.",
     gradientRgb: [176, 168, 224] as const,
   },
   {
@@ -462,6 +462,7 @@ export default function HomeScreen() {
   useScrollToTop(scrollRef);
   const { addItem, items, updateItem } = useHistory();
   const { name, isAuthenticated, isPro } = useUser();
+  const { getDailyQuote } = useDailyQuotes();
   const dreamsLeft = dreamInterpretationsRemaining(isPro, items);
   const [freeMeditationSlugs, setFreeMeditationSlugs] = useState<Set<string> | null>(null);
   const userName = isAuthenticated ? name : "Гость";
@@ -638,7 +639,10 @@ export default function HomeScreen() {
     () => pickByDay(ENERGY_THEMES, currentDayKey),
     [currentDayKey],
   );
-  const dailyQuote = useMemo(() => getDailyQuote(currentDayKey), [currentDayKey]);
+  const dailyQuote = useMemo(
+    () => getDailyQuote(currentDayKey),
+    [currentDayKey, getDailyQuote],
+  );
   const greeting = useMemo(() => greetingForHour(new Date().getHours()), []);
 
   // Get the reading data for the drawn card (if any)
@@ -814,13 +818,7 @@ export default function HomeScreen() {
                 </Pressable>
               </View>
               <View style={styles.topBarLogo} pointerEvents="none">
-                <Image
-                  source={HOME_LOGO}
-                  style={styles.topBarLogoImage}
-                  contentFit="contain"
-                  transition={150}
-                  accessibilityLabel="Arcanyx"
-                />
+                <ArcanyxLogo height={36} style={styles.topBarLogoImage} />
               </View>
               <View style={[styles.topBarSide, styles.topBarSideRight]} />
             </View>
@@ -1356,9 +1354,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   topBarLogoImage: {
-    height: 36,
-    width: "100%",
-    maxWidth: 160,
+    maxWidth: 200,
   },
   iconButton: {
     width: 44,

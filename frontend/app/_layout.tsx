@@ -19,6 +19,7 @@ import {
 import { YesevaOne_400Regular } from "@expo-google-fonts/yeseva-one";
 import { View } from "react-native";
 import { DailyCardProvider } from "../src/context/DailyCardContext";
+import { DailyQuotesProvider } from "../src/context/DailyQuotesContext";
 import { HistoryProvider } from "../src/context/HistoryContext";
 import { MeditationFavoritesProvider } from "../src/context/MeditationFavoritesContext";
 import { TarotSpreadsProvider } from "../src/context/TarotSpreadsContext";
@@ -49,10 +50,11 @@ function AppStack() {
   }, [hydrated, notificationsEnabled]);
 
   return (
-    <TarotSpreadsProvider>
-      <HistoryProvider>
-        <MeditationFavoritesProvider>
-          <DailyCardProvider>
+    <DailyQuotesProvider>
+      <TarotSpreadsProvider>
+        <HistoryProvider>
+          <MeditationFavoritesProvider>
+            <DailyCardProvider>
             <StatusBar style="light" />
             <Stack
               screenOptions={{
@@ -76,10 +78,11 @@ function AppStack() {
               <Stack.Screen name="pro-plans" options={SWIPE_BACK_OPTIONS} />
               <Stack.Screen name="support" options={SWIPE_BACK_OPTIONS} />
             </Stack>
-          </DailyCardProvider>
-        </MeditationFavoritesProvider>
-      </HistoryProvider>
-    </TarotSpreadsProvider>
+            </DailyCardProvider>
+          </MeditationFavoritesProvider>
+        </HistoryProvider>
+      </TarotSpreadsProvider>
+    </DailyQuotesProvider>
   );
 }
 

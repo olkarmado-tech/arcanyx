@@ -1,6 +1,7 @@
 const TOKEN_KEY = "arcanyx_admin_token";
 const state = { items: [], selected: null, dragging: null };
 const spreadState = { items: [], selected: null, dragging: null };
+const quoteState = { items: [], selected: null, dragging: null };
 const $ = (id) => document.getElementById(id);
 
 function token() {
@@ -259,12 +260,113 @@ async function handleUpload(kind, file) {
 }
 
 function switchSection(section) {
+  const meditations = section === "meditations";
   const spreads = section === "spreads";
-  $("meditations-panel").classList.toggle("hidden", spreads);
+  const quotes = section === "quotes";
+  const pro = section === "pro";
+  $("meditations-panel").classList.toggle("hidden", !meditations);
   $("spreads-panel").classList.toggle("hidden", !spreads);
-  $("tab-meditations").classList.toggle("active", !spreads);
+  $("quotes-panel").classList.toggle("hidden", !quotes);
+  $("pro-panel").classList.toggle("hidden", !pro);
+  $("tab-meditations").classList.toggle("active", meditations);
   $("tab-spreads").classList.toggle("active", spreads);
-  $("section-title").textContent = spreads ? "Расклады Таро" : "Медитации";
+  $("tab-quotes").classList.toggle("active", quotes);
+  $("tab-pro").classList.toggle("active", pro);
+  $("section-title").textContent = pro
+    ? "Pro"
+    : quotes
+      ? "Цитаты дня"
+      : spreads
+        ? "Расклады Таро"
+        : "Медитации";
+}
+
+function quotePreview(text) {
+  const normalized = String(text || "").replace(/\s+/g, " ").trim();
+  if (normalized.length <= 72) return normalized;
+  return `${normalized.slice(0, 69)}…`;
+}
+
+function quoteDraftFromForm() {
+  return {
+    text: $("quote-text").value.trim(),
+    author: $("quote-author").value.trim(),
+    sort: Number($("quote-sort").value || 0),
+  };
+}
+
+function setQuoteForm(item) {
+  quoteState.selected = item;
+  $("quote-empty-editor").classList.add("hidden");
+  $("quote-editor-form").classList.remove("hidden");
+  $("quote-text").value = item?.text || "";
+  $("quote-author").value = item?.author || "";
+  $("quote-sort").value = item?.sort ?? quoteState.items.length;
+  $("quote-editor-heading").textContent = item
+    ? quotePreview(item.text) || "Цитата"
+    : "Новая цитата";
+  $("quote-publish-badge").textContent = item?.published ? "Опубликована" : "Черновик";
+  $("quote-publish-badge").classList.toggle("live", Boolean(item?.published));
+  $("quote-archive-button").classList.toggle("hidden", !item);
+  $("quote-publish-actions").classList.toggle("hidden", !item);
+  $("quote-publish-button").classList.toggle("hidden", Boolean(item?.published));
+  $("quote-unpublish-button").classList.toggle("hidden", !item?.published);
+  renderQuoteList();
+}
+
+function renderQuoteList() {
+  $("quote-item-count").textContent = `${quoteState.items.length} шт.`;
+  $("quote-list").innerHTML = quoteState.items.map((item) => `
+    <button class="list-item${quoteState.selected?.id === item.id ? " active" : ""}"
+      data-quote-id="${escapeHtml(item.id)}" draggable="true">
+      <strong>${escapeHtml(quotePreview(item.text))}</strong>
+      <span class="status-dot${item.published ? " live" : ""}">${item.published ? "● online" : "○ draft"}</span>
+      <small>${escapeHtml(item.author)}</small>
+    </button>
+  `).join("");
+
+  document.querySelectorAll("[data-quote-id]").forEach((node) => {
+    node.addEventListener("click", () => {
+      const item = quoteState.items.find((entry) => entry.id === node.dataset.quoteId);
+      if (item) setQuoteForm(item);
+    });
+    node.addEventListener("dragstart", () => {
+      quoteState.dragging = node.dataset.quoteId;
+      node.classList.add("dragging");
+    });
+    node.addEventListener("dragend", () => node.classList.remove("dragging"));
+    node.addEventListener("dragover", (event) => event.preventDefault());
+    node.addEventListener("drop", async (event) => {
+      event.preventDefault();
+      const target = node.dataset.quoteId;
+      if (!quoteState.dragging || quoteState.dragging === target) return;
+      const from = quoteState.items.findIndex((item) => item.id === quoteState.dragging);
+      const to = quoteState.items.findIndex((item) => item.id === target);
+      const [moved] = quoteState.items.splice(from, 1);
+      quoteState.items.splice(to, 0, moved);
+      renderQuoteList();
+      try {
+        await api("/admin/daily-quotes/reorder", {
+          method: "POST",
+          body: JSON.stringify({ ids: quoteState.items.map((item) => item.id) }),
+        });
+        flash("Порядок цитат сохранён");
+      } catch (error) {
+        flash(error.message, true);
+        await loadQuoteItems();
+      }
+    });
+  });
+}
+
+async function loadQuoteItems(selectId = quoteState.selected?.id) {
+  const payload = await api("/admin/daily-quotes");
+  quoteState.items = payload.items || [];
+  renderQuoteList();
+  if (selectId) {
+    const selected = quoteState.items.find((item) => item.id === selectId);
+    if (selected) setQuoteForm(selected);
+  }
 }
 
 function spreadPositionsFromForm() {
@@ -473,7 +575,7 @@ async function initialize() {
       $("storage-warning").textContent = "Timeweb S3 не настроен: просмотр и редактирование доступны, загрузка файлов — после добавления ключей в .env.";
       $("storage-warning").classList.remove("hidden");
     }
-    await Promise.all([loadItems(), loadSpreadItems()]);
+    await Promise.all([loadItems(), loadSpreadItems(), loadQuoteItems()]);
   } catch (error) {
     showLogin(error.message);
   }
@@ -489,6 +591,28 @@ $("logout-button").addEventListener("click", () => {
 });
 $("tab-meditations").addEventListener("click", () => switchSection("meditations"));
 $("tab-spreads").addEventListener("click", () => switchSection("spreads"));
+$("tab-quotes").addEventListener("click", () => switchSection("quotes"));
+$("tab-pro").addEventListener("click", () => switchSection("pro"));
+$("pro-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const email = $("pro-email").value.trim();
+  const is_pro = $("pro-enabled").checked;
+  $("pro-save-state").textContent = "Сохраняю…";
+  $("pro-result").classList.add("hidden");
+  try {
+    const payload = await api("/admin/users/pro", {
+      method: "POST",
+      body: JSON.stringify({ email, is_pro }),
+    });
+    $("pro-result").textContent = JSON.stringify(payload.user, null, 2);
+    $("pro-result").classList.remove("hidden");
+    flash(is_pro ? "Pro включён" : "Pro отключён");
+  } catch (error) {
+    flash(error.message, true);
+  } finally {
+    $("pro-save-state").textContent = "";
+  }
+});
 $("new-button").addEventListener("click", () => setForm(null));
 $("editor-form").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -651,6 +775,58 @@ $("spread-archive-button").addEventListener("click", async () => {
     $("spread-empty-editor").classList.remove("hidden");
     await loadSpreadItems(null);
     flash("Расклад перемещён в архив");
+  } catch (error) { flash(error.message, true); }
+});
+
+$("quote-new-button").addEventListener("click", () => setQuoteForm(null));
+$("quote-editor-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const body = quoteDraftFromForm();
+  $("quote-save-state").textContent = "Сохраняю…";
+  try {
+    const path = quoteState.selected
+      ? `/admin/daily-quotes/${encodeURIComponent(quoteState.selected.id)}`
+      : "/admin/daily-quotes";
+    const item = await api(path, {
+      method: quoteState.selected ? "PUT" : "POST",
+      body: JSON.stringify(body),
+    });
+    quoteState.selected = item;
+    await loadQuoteItems(item.id);
+    flash("Цитата сохранена");
+  } catch (error) {
+    flash(error.message, true);
+  } finally {
+    $("quote-save-state").textContent = "";
+  }
+});
+$("quote-publish-button").addEventListener("click", async () => {
+  if (!quoteState.selected) return;
+  try {
+    const item = await api(`/admin/daily-quotes/${encodeURIComponent(quoteState.selected.id)}/publish`, { method: "POST" });
+    quoteState.selected = item;
+    await loadQuoteItems(item.id);
+    flash("Цитата опубликована");
+  } catch (error) { flash(error.message, true); }
+});
+$("quote-unpublish-button").addEventListener("click", async () => {
+  if (!quoteState.selected) return;
+  try {
+    const item = await api(`/admin/daily-quotes/${encodeURIComponent(quoteState.selected.id)}/unpublish`, { method: "POST" });
+    quoteState.selected = item;
+    await loadQuoteItems(item.id);
+    flash("Цитата снята с публикации");
+  } catch (error) { flash(error.message, true); }
+});
+$("quote-archive-button").addEventListener("click", async () => {
+  if (!quoteState.selected || !confirm("Убрать цитату в архив?")) return;
+  try {
+    await api(`/admin/daily-quotes/${encodeURIComponent(quoteState.selected.id)}`, { method: "DELETE" });
+    quoteState.selected = null;
+    $("quote-editor-form").classList.add("hidden");
+    $("quote-empty-editor").classList.remove("hidden");
+    await loadQuoteItems(null);
+    flash("Цитата перемещена в архив");
   } catch (error) { flash(error.message, true); }
 });
 

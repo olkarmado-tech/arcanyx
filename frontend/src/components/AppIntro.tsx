@@ -33,14 +33,14 @@ import Animated, {
 } from "react-native-reanimated";
 
 const LOGO = require("../../assets/home/logo.png");
-const LOGO_ASPECT = 901 / 286;
+const LOGO_ASPECT = 965 / 330;
 
 /** Near-black with just enough violet in it to not read as grey. */
 export const INTRO_BG = "#0B0910";
 
-/** Sparkle sits in the counter of the A in logo.png. */
-const SPARKLE_X = 0.112;
-const SPARKLE_Y = 0.503;
+/** Soft glow anchor — star on the «x» in logo.png. */
+const SPARKLE_X = 0.756;
+const SPARKLE_Y = 0.615;
 /** Wordmark centre, as a fraction of screen height. */
 const LOGO_CENTER_Y = 0.47;
 

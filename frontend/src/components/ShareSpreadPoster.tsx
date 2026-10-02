@@ -5,6 +5,7 @@ import { theme } from "../theme";
 import { TarotCard as TarotCardType } from "../data/tarotCards";
 import { cardShort } from "../data/tarotOrientation";
 import { frontArtSourceForCardId } from "../data/tarotFrontArt";
+import ArcanyxLogo from "./ArcanyxLogo";
 import ShareCardPoster, { SHARE_POSTER_H, SHARE_POSTER_W } from "./ShareCardPoster";
 
 const GOLD_OUTER = "rgba(255,217,154,0.78)";
@@ -187,7 +188,7 @@ function MultiCards({
           {caption}
         </Text>
       ) : null}
-      <Text style={styles.brand}>Arcanyx</Text>
+      <ArcanyxLogo height={16} style={styles.brandLogo} />
     </View>
   );
 }
@@ -269,11 +270,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 8,
   },
-  brand: {
-    color: "rgba(255,247,234,0.92)",
-    fontFamily: theme.fonts.display,
-    fontSize: 15,
-    letterSpacing: 0.6,
+  brandLogo: {
     marginTop: 8,
+    opacity: 0.95,
   },
 });
